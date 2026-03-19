@@ -1,0 +1,25 @@
+name: Gaia
+version: ${project.version}
+main: com.gaiaac.gaia.core.GaiaPlugin
+api-version: "1.21"
+description: Packet-level Minecraft anticheat
+authors: [GaiaTeam]
+depend: [packetevents]
+softdepend: [QoLPlugin]
+
+commands:
+  gaia:
+    description: Gaia anticheat command
+    usage: /gaia <debug|violations|reload|alerts|info>
+    permission: gaia.admin
+
+permissions:
+  gaia.admin:
+    description: Full access to Gaia commands
+    default: op
+  gaia.alerts:
+    description: Receive anticheat alerts
+    default: op
+  gaia.bypass:
+    description: Bypass all checks
+    default: false
