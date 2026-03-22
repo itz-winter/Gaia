@@ -19,14 +19,14 @@ public class AimU extends Check {
         float lastYaw = data.getLastYaw();
         float deltaYaw = data.getDeltaYaw();
 
-        if (deltaYaw > 3.0f) {
+        if (deltaYaw > 5.0f) {
             float direction = yaw - lastYaw;
             double lastDir = data.getBuffer("aim_u_lastDir");
 
             if (lastDir != 0 && Math.signum(direction) != Math.signum(lastDir)
-                    && Math.abs(Math.abs(direction) - Math.abs(lastDir)) < 1.0) {
+                    && Math.abs(Math.abs(direction) - Math.abs(lastDir)) < 0.5) {
                 double buffer = data.addBuffer("aim_u_buffer", 1);
-                if (buffer > 10) {
+                if (buffer > 12) {
                     flag(player, data, "oscillate dir=" + String.format("%.2f", direction)
                             + " last=" + String.format("%.2f", lastDir));
                     data.setBuffer("aim_u_buffer", 0);

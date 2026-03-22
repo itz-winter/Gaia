@@ -25,9 +25,9 @@ public class AimX extends Check {
             double pitchDiff = Math.abs(deltaPitch - lastDeltaPitch);
 
             // Unnaturally smooth: very small acceleration with significant movement
-            if (yawDiff < 0.05 && pitchDiff < 0.05 && deltaYaw > 5.0f) {
+            if (yawDiff < 0.01 && pitchDiff < 0.01 && deltaYaw > 8.0f) {
                 double buffer = data.addBuffer("aim_x_buffer", 1);
-                if (buffer > 15) {
+                if (buffer > 18) {
                     flag(player, data, "smoothAim yDiff=" + String.format("%.4f", yawDiff)
                             + " pDiff=" + String.format("%.4f", pitchDiff));
                     data.setBuffer("aim_x_buffer", 0);

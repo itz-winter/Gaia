@@ -24,17 +24,17 @@ public class AimI extends Check {
             double yawRatio = lastDeltaYaw > 0 ? deltaYaw / lastDeltaYaw : 0;
             double pitchRatio = lastDeltaPitch > 0 ? deltaPitch / lastDeltaPitch : 0;
 
-            // Linear interpolation produces very consistent ratios
-            if (Math.abs(yawRatio - 1.0) < 0.05 && Math.abs(pitchRatio - 1.0) < 0.05
-                    && deltaYaw > 2.0f && deltaPitch > 1.0f) {
+            // Linear interpolation produces very consistent ratios — tighter than human jitter
+            if (Math.abs(yawRatio - 1.0) < 0.02 && Math.abs(pitchRatio - 1.0) < 0.02
+                    && deltaYaw > 3.0f && deltaPitch > 1.5f) {
                 double buffer = data.addBuffer("aim_i_buffer", 1);
-                if (buffer > 12) {
+                if (buffer > 15) {
                     flag(player, data, "linearInterp yawR=" + String.format("%.3f", yawRatio)
                             + " pitchR=" + String.format("%.3f", pitchRatio));
                     data.setBuffer("aim_i_buffer", 0);
                 }
             } else {
-                data.decreaseBuffer("aim_i_buffer", 0.5);
+                data.decreaseBuffer("aim_i_buffer", 1.0);
             }
         }
     }

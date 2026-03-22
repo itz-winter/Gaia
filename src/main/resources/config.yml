@@ -48,76 +48,76 @@ checks:
   aim:
     a:
       enabled: true
-      threshold: 10
+      threshold: 20
     b:
       enabled: true
-      threshold: 8
+      threshold: 15
     c:
       enabled: true
-      threshold: 10
+      threshold: 20
     d:
       enabled: true
-      threshold: 8
+      threshold: 15
     e:
       enabled: true
-      threshold: 10
+      threshold: 20
     f:
       enabled: true
-      threshold: 8
+      threshold: 15
     g:
-      enabled: true
-      threshold: 5
+      enabled: false
+      threshold: 20
     h:
-      enabled: true
-      threshold: 10
+      enabled: false
+      threshold: 20
     i:
       enabled: true
-      threshold: 10
+      threshold: 20
     j:
       enabled: true
-      threshold: 8
+      threshold: 20
     k:
       enabled: true
-      threshold: 10
+      threshold: 20
     l:
       enabled: true
-      threshold: 8
+      threshold: 15
     m:
       enabled: true
-      threshold: 10
+      threshold: 20
     "n":
       enabled: true
-      threshold: 8
+      threshold: 25
     o:
       enabled: true
-      threshold: 10
+      threshold: 20
     p:
       enabled: true
-      threshold: 8
+      threshold: 20
     q:
       enabled: true
-      threshold: 10
+      threshold: 15
     r:
-      enabled: true
-      threshold: 8
+      enabled: false
+      threshold: 20
     s:
       enabled: true
-      threshold: 10
+      threshold: 20
     t:
       enabled: true
-      threshold: 8
+      threshold: 15
     u:
       enabled: true
-      threshold: 10
+      threshold: 20
     v:
       enabled: true
-      threshold: 8
+      threshold: 25
     w:
       enabled: true
-      threshold: 10
+      threshold: 15
     x:
       enabled: true
-      threshold: 8
+      threshold: 25
     "y":
       enabled: true
       threshold: 10
@@ -201,15 +201,15 @@ checks:
   criticals:
     a:
       enabled: true
-      threshold: 5
+      threshold: 8
     b:
       enabled: true
-      threshold: 8
+      threshold: 10
 
   fastbow:
     a:
       enabled: true
-      threshold: 5
+      threshold: 8
 
   hitbox:
     a:
@@ -268,88 +268,88 @@ checks:
   velocity:
     a:
       enabled: true
-      threshold: 8
+      threshold: 10
     b:
       enabled: true
-      threshold: 8
+      threshold: 10
     c:
       enabled: true
-      threshold: 5
+      threshold: 8
     d:
       enabled: true
-      threshold: 8
+      threshold: 10
 
   # =================== MOVEMENT ====================
 
   antilevitation:
     a:
       enabled: true
-      threshold: 5
+      threshold: 8
 
   boatfly:
-    a:
-      enabled: true
-      threshold: 5
-    b:
-      enabled: true
-      threshold: 5
-    c:
-      enabled: true
-      threshold: 5
-
-  entityspeed:
-    a:
-      enabled: true
-      threshold: 5
-
-  entityflight:
-    a:
-      enabled: true
-      threshold: 5
-    b:
-      enabled: true
-      threshold: 5
-
-  elytra:
     a:
       enabled: true
       threshold: 8
     b:
       enabled: true
-      threshold: 5
+      threshold: 8
     c:
       enabled: true
-      threshold: 5
+      threshold: 8
+
+  entityspeed:
+    a:
+      enabled: true
+      threshold: 8
+
+  entityflight:
+    a:
+      enabled: true
+      threshold: 8
+    b:
+      enabled: true
+      threshold: 8
+
+  elytra:
+    a:
+      enabled: true
+      threshold: 10
+    b:
+      enabled: true
+      threshold: 8
+    c:
+      enabled: true
+      threshold: 8
     d:
       enabled: true
-      threshold: 5
+      threshold: 8
     e:
       enabled: true
-      threshold: 5
+      threshold: 8
     f:
       enabled: true
-      threshold: 5
+      threshold: 8
     g:
       enabled: true
-      threshold: 5
+      threshold: 8
     h:
       enabled: true
-      threshold: 5
+      threshold: 8
     i:
       enabled: true
-      threshold: 5
+      threshold: 8
     j:
       enabled: true
-      threshold: 5
+      threshold: 8
     k:
       enabled: true
-      threshold: 5
+      threshold: 8
     l:
       enabled: true
-      threshold: 5
+      threshold: 8
     m:
       enabled: true
-      threshold: 5
+      threshold: 8
 
   fastclimb:
     a:
@@ -359,19 +359,19 @@ checks:
   flight:
     a:
       enabled: true
-      threshold: 8
+      threshold: 10
     b:
       enabled: true
-      threshold: 5
+      threshold: 8
     c:
       enabled: true
-      threshold: 8
+      threshold: 10
     d:
       enabled: true
-      threshold: 5
+      threshold: 8
     e:
       enabled: true
-      threshold: 5
+      threshold: 8
 
   jesus:
     a:
@@ -393,10 +393,10 @@ checks:
   jump:
     a:
       enabled: true
-      threshold: 5
+      threshold: 8
     b:
       enabled: true
-      threshold: 8
+      threshold: 10
 
   motion:
     a:
@@ -443,27 +443,27 @@ checks:
   speed:
     a:
       enabled: true
-      threshold: 10
+      threshold: 12
     b:
       enabled: true
-      threshold: 8
+      threshold: 10
     c:
       enabled: true
-      threshold: 5
+      threshold: 8
     d:
       enabled: true
-      threshold: 8
+      threshold: 10
 
   step:
     a:
       enabled: true
-      threshold: 5
+      threshold: 8
     b:
       enabled: true
-      threshold: 5
+      threshold: 8
     c:
       enabled: true
-      threshold: 5
+      threshold: 8
 
   sprint:
     a:
@@ -525,19 +525,19 @@ checks:
   vclip:
     a:
       enabled: true
-      threshold: 3
+      threshold: 5
 
   wallclimb:
     a:
       enabled: true
-      threshold: 5
+      threshold: 8
 
   # ==================== PLAYER =====================
 
   airplace:
     a:
       enabled: true
-      threshold: 5
+      threshold: 8
 
   badpackets:
     a:
@@ -654,7 +654,7 @@ checks:
   fastbreak:
     a:
       enabled: true
-      threshold: 5
+      threshold: 8
 
   fastplace:
     a:
@@ -664,7 +664,7 @@ checks:
   fastuse:
     a:
       enabled: true
-      threshold: 5
+      threshold: 8
 
   groundspoof:
     a:
@@ -680,7 +680,7 @@ checks:
   ghosthand:
     a:
       enabled: true
-      threshold: 5
+      threshold: 8
 
   improbable:
     a:

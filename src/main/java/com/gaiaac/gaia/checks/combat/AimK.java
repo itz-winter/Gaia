@@ -20,15 +20,16 @@ public class AimK extends Check {
         float lastDeltaYaw = data.getLastDeltaYaw();
         float lastDeltaPitch = data.getLastDeltaPitch();
 
-        if (deltaYaw > 0.5f && deltaPitch > 0.5f
+        // Much stricter: require large deltas AND exact match — small identical deltas are normal mouse
+        if (deltaYaw > 3.0f && deltaPitch > 1.0f
                 && deltaYaw == lastDeltaYaw && deltaPitch == lastDeltaPitch) {
             double buffer = data.addBuffer("aim_k_buffer", 1);
-            if (buffer > 8) {
+            if (buffer > 12) {
                 flag(player, data, "identicalDelta dYaw=" + deltaYaw + " dPitch=" + deltaPitch);
-                data.setBuffer("aim_k_buffer", 0);
+                data.setBuffer("aim_k_buffer", 4);
             }
         } else {
-            data.decreaseBuffer("aim_k_buffer", 0.5);
+            data.decreaseBuffer("aim_k_buffer", 1.0);
         }
     }
 }

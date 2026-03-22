@@ -15,19 +15,8 @@ public class AimR extends Check {
     public void handle(Player player, PlayerData data) {
         if (recentlyTeleported(data) || recentlyJoined(data)) return;
 
-        float pitch = data.getPitch();
-        float deltaPitch = data.getDeltaPitch();
-
-        // Head-level targeting: pitch tends to hover around a very consistent value
-        if (pitch > -30 && pitch < 30 && deltaPitch < 0.5f && deltaPitch > 0) {
-            double buffer = data.addBuffer("aim_r_buffer", 1);
-            if (buffer > 20) {
-                flag(player, data, "headLock pitch=" + String.format("%.2f", pitch)
-                        + " dPitch=" + String.format("%.3f", deltaPitch));
-                data.setBuffer("aim_r_buffer", 0);
-            }
-        } else {
-            data.decreaseBuffer("aim_r_buffer", 1.0);
-        }
+        // Disabled — this check is fundamentally flawed.
+        // Looking straight ahead with low pitch change is what every normal player does.
+        // Needs complete redesign to compare pitch consistency relative to a tracked target entity.
     }
 }

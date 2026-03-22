@@ -18,15 +18,15 @@ public class AimT extends Check {
         float deltaYaw = data.getDeltaYaw();
         float lastDeltaYaw = data.getLastDeltaYaw();
 
-        // Zero rotation followed by large snap
-        if (lastDeltaYaw < 0.01f && deltaYaw > 30.0f) {
+        // Only flag truly extreme snaps: zero → 90+ degrees (normal mouse resumes produce ~30° max)
+        if (lastDeltaYaw < 0.01f && deltaYaw > 90.0f) {
             double buffer = data.addBuffer("aim_t_buffer", 1);
-            if (buffer > 5) {
+            if (buffer > 6) {
                 flag(player, data, "snapFromIdle last=" + lastDeltaYaw + " cur=" + deltaYaw);
-                data.setBuffer("aim_t_buffer", 0);
+                data.setBuffer("aim_t_buffer", 2);
             }
         } else {
-            data.decreaseBuffer("aim_t_buffer", 0.25);
+            data.decreaseBuffer("aim_t_buffer", 0.5);
         }
     }
 }

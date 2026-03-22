@@ -52,19 +52,15 @@ public class PacketManager implements PacketListener {
             data.handleMovement(wrapper.getPosition().getX(), wrapper.getPosition().getY(),
                     wrapper.getPosition().getZ(), wrapper.getYaw(), wrapper.getPitch(), wrapper.isOnGround());
             runChecks(cm.getMovementChecks(), player, data);
-            // Only run aim checks if the player is actually in combat (attacked within last 2s)
-            if (System.currentTimeMillis() - data.getLastAttackTime() <= 2000) {
-                runChecks(cm.getCombatChecksByCategory("aim"), player, data);
-            }
+            // Aim checks run on all rotation packets (detects freecam, nuker, etc. — not just combat aimbots)
+            runChecks(cm.getCombatChecksByCategory("aim"), player, data);
 
         } else if (event.getPacketType() == PacketType.Play.Client.PLAYER_ROTATION) {
             WrapperPlayClientPlayerRotation wrapper = new WrapperPlayClientPlayerRotation(event);
             data.handleMovement(data.getX(), data.getY(), data.getZ(),
                     wrapper.getYaw(), wrapper.getPitch(), wrapper.isOnGround());
-            // Only run aim checks if the player is actually in combat (attacked within last 2s)
-            if (System.currentTimeMillis() - data.getLastAttackTime() <= 2000) {
-                runChecks(cm.getCombatChecksByCategory("aim"), player, data);
-            }
+            // Aim checks run on all rotation packets (detects freecam, nuker, etc. — not just combat aimbots)
+            runChecks(cm.getCombatChecksByCategory("aim"), player, data);
 
         } else if (event.getPacketType() == PacketType.Play.Client.PLAYER_FLYING) {
             WrapperPlayClientPlayerFlying wrapper = new WrapperPlayClientPlayerFlying(event);

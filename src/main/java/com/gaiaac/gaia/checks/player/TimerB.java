@@ -15,8 +15,6 @@ import org.bukkit.entity.Player;
  */
 public class TimerB extends Check {
 
-    private long lastTickNano = 0;
-
     public TimerB(GaiaPlugin plugin) {
         super(plugin, "Timer", "B", "timer", true, 15);
     }
@@ -28,13 +26,15 @@ public class TimerB extends Check {
 
         long now = System.nanoTime();
 
+        long lastTickNano = (long) data.getBuffer("TimerB_lastTick");
+
         if (lastTickNano == 0) {
-            lastTickNano = now;
+            data.setBuffer("TimerB_lastTick", (double) now);
             return;
         }
 
         long elapsed = now - lastTickNano;
-        lastTickNano = now;
+        data.setBuffer("TimerB_lastTick", (double) now);
 
         // Ignore large gaps — player probably alt-tabbed, lagged, or loaded chunks
         if (elapsed > 3_000_000_000L) { // 3 seconds

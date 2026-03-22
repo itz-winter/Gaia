@@ -18,14 +18,16 @@ public class AimM extends Check {
         float deltaYaw = data.getDeltaYaw();
         float deltaPitch = data.getDeltaPitch();
 
-        if (deltaYaw > 15.0f && deltaPitch < 0.1f && deltaPitch >= 0) {
+        // Must require very high yaw with literally zero pitch over multiple ticks
+        // Normal players often turn horizontally with tiny pitch — only flag sustained zero pitch with huge yaw
+        if (deltaYaw > 30.0f && deltaPitch == 0.0f && data.getLastDeltaPitch() == 0.0f) {
             double buffer = data.addBuffer("aim_m_buffer", 1);
-            if (buffer > 12) {
+            if (buffer > 15) {
                 flag(player, data, "pitchLock dYaw=" + deltaYaw + " dPitch=" + deltaPitch);
-                data.setBuffer("aim_m_buffer", 0);
+                data.setBuffer("aim_m_buffer", 5);
             }
         } else {
-            data.decreaseBuffer("aim_m_buffer", 0.5);
+            data.decreaseBuffer("aim_m_buffer", 1.0);
         }
     }
 }

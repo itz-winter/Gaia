@@ -19,10 +19,6 @@ public class AimC extends Check {
     public void handle(Player player, PlayerData data) {
         if (recentlyTeleported(data) || recentlyJoined(data)) return;
 
-        // Only check during combat
-        long timeSinceAttack = System.currentTimeMillis() - data.getLastAttackTime();
-        if (timeSinceAttack > 2000) return;
-
         float deltaYaw = data.getDeltaYaw();
         float deltaPitch = data.getDeltaPitch();
 

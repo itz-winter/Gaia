@@ -20,10 +20,6 @@ public class AimB extends Check {
     public void handle(Player player, PlayerData data) {
         if (recentlyTeleported(data) || recentlyJoined(data)) return;
 
-        // Only check during combat
-        long timeSinceAttack = System.currentTimeMillis() - data.getLastAttackTime();
-        if (timeSinceAttack > 2000) return;
-
         float deltaYaw = data.getDeltaYaw();
         float lastDeltaYaw = data.getLastDeltaYaw();
         float deltaPitch = data.getDeltaPitch();

@@ -148,7 +148,11 @@ public class PlayerData {
 
         this.lastDeltaYaw = this.deltaYaw;
         this.lastDeltaPitch = this.deltaPitch;
-        this.deltaYaw = Math.abs(newYaw - lastYaw);
+        // Wrap yaw difference to handle 360° wrapping (e.g., -179 to 179 = 2°, not 358°)
+        float rawYawDiff = newYaw - lastYaw;
+        while (rawYawDiff > 180f) rawYawDiff -= 360f;
+        while (rawYawDiff < -180f) rawYawDiff += 360f;
+        this.deltaYaw = Math.abs(rawYawDiff);
         this.deltaPitch = Math.abs(newPitch - lastPitch);
 
         this.lastMovementPacket = System.currentTimeMillis();

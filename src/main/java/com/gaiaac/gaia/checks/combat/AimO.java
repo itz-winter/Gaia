@@ -17,11 +17,18 @@ public class AimO extends Check {
 
         float deltaYaw = data.getDeltaYaw();
         float deltaPitch = data.getDeltaPitch();
-        double totalDelta = Math.sqrt(deltaYaw * deltaYaw + deltaPitch * deltaPitch);
 
-        if (totalDelta > 180.0) {
-            flag(player, data, "spinAim total=" + String.format("%.2f", totalDelta)
-                    + " dYaw=" + deltaYaw + " dPitch=" + deltaPitch);
+        // With proper yaw wrapping, max legitimate delta is ~180°.
+        // Only flag absolutely impossible values or sustained insane rotation speed.
+        if (deltaYaw > 170.0f && deltaPitch > 30.0f) {
+            double buffer = data.addBuffer("aim_o_buffer", 1);
+            if (buffer > 3) {
+                flag(player, data, "spinAim dYaw=" + String.format("%.2f", deltaYaw)
+                        + " dPitch=" + String.format("%.2f", deltaPitch));
+                data.setBuffer("aim_o_buffer", 1);
+            }
+        } else {
+            data.decreaseBuffer("aim_o_buffer", 0.5);
         }
     }
 }

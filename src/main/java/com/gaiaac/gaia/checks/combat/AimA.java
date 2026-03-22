@@ -20,10 +20,6 @@ public class AimA extends Check {
     public void handle(Player player, PlayerData data) {
         if (recentlyTeleported(data) || recentlyJoined(data)) return;
 
-        // Only check during combat - must have attacked within the last 2 seconds
-        long timeSinceAttack = System.currentTimeMillis() - data.getLastAttackTime();
-        if (timeSinceAttack > 2000) return;
-
         float deltaYaw = data.getDeltaYaw();
         float deltaPitch = data.getDeltaPitch();
 

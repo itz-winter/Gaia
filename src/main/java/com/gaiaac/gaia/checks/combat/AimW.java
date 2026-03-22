@@ -20,9 +20,9 @@ public class AimW extends Check {
 
         if (deltaPitch > 0 && lastDeltaPitch > 0) {
             double pitchAccel = Math.abs(deltaPitch - lastDeltaPitch);
-            if (pitchAccel > 60.0 && deltaPitch > 20.0) {
+            if (pitchAccel > 80.0 && deltaPitch > 30.0) {
                 double buffer = data.addBuffer("aim_w_buffer", 1);
-                if (buffer > 5) {
+                if (buffer > 6) {
                     flag(player, data, "pitchAccel=" + String.format("%.2f", pitchAccel)
                             + " dPitch=" + deltaPitch);
                     data.setBuffer("aim_w_buffer", 0);

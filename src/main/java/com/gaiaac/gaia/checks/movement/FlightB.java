@@ -12,16 +12,16 @@ public class FlightB extends Check {
     @Override
     public void handle(Player player, PlayerData data) {
         if (recentlyTeleported(data) || data.isFlying() || data.isGliding() || data.isInVehicle()
-                || data.isInWater() || data.isInLava() || data.isOnClimbable()) return;
+                || data.isInWater() || data.isInLava() || data.isOnClimbable() || recentlyReceivedVelocity(data)) return;
 
-        if (Math.abs(data.getDeltaY()) < 0.005 && data.getAirTicks() > 10 && !data.isOnGround()) {
+        if (Math.abs(data.getDeltaY()) < 0.005 && data.getAirTicks() > 15 && !data.isOnGround()) {
             double buffer = data.addBuffer("flight_b_buffer", 1);
-            if (buffer > 3) {
+            if (buffer > 5) {
                 flag(player, data, 3.0, "hover dY=" + String.format("%.6f", data.getDeltaY()) + " airTicks=" + data.getAirTicks());
-                data.setBuffer("flight_b_buffer", 1);
+                data.setBuffer("flight_b_buffer", 2);
             }
         } else {
-            data.decreaseBuffer("flight_b_buffer", 0.25);
+            data.decreaseBuffer("flight_b_buffer", 0.5);
         }
     }
 }

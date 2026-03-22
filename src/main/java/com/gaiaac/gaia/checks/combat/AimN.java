@@ -16,14 +16,17 @@ public class AimN extends Check {
         if (recentlyTeleported(data) || recentlyJoined(data)) return;
 
         float deltaYaw = data.getDeltaYaw();
-        if (deltaYaw > 1.0f && deltaYaw % 1.0f == 0.0f) {
+        float deltaPitch = data.getDeltaPitch();
+        // Only flag if BOTH yaw AND pitch are round numbers — yaw alone being round is normal
+        if (deltaYaw > 2.0f && deltaPitch > 1.0f
+                && deltaYaw % 1.0f == 0.0f && deltaPitch % 1.0f == 0.0f) {
             double buffer = data.addBuffer("aim_n_buffer", 1);
-            if (buffer > 15) {
-                flag(player, data, "roundYaw dYaw=" + deltaYaw);
-                data.setBuffer("aim_n_buffer", 0);
+            if (buffer > 20) {
+                flag(player, data, "roundRotation dYaw=" + deltaYaw + " dPitch=" + deltaPitch);
+                data.setBuffer("aim_n_buffer", 8);
             }
         } else {
-            data.decreaseBuffer("aim_n_buffer", 0.5);
+            data.decreaseBuffer("aim_n_buffer", 1.0);
         }
     }
 }

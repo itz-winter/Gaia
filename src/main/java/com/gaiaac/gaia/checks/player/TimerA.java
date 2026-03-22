@@ -23,8 +23,6 @@ public class TimerA extends Check {
     // Allow 10% tolerance — OS thread scheduling, garbage collection, etc. can cause ±5ms jitter easily
     private static final long TOLERANCE_NS = EXPECTED_NS_PER_TICK / 10; // 5ms
 
-    private long lastTickNano = 0;
-
     public TimerA(GaiaPlugin plugin) {
         super(plugin, "Timer", "A", "timer", true, 15);
     }
@@ -36,13 +34,16 @@ public class TimerA extends Check {
 
         long now = System.nanoTime();
 
+        // Use per-player buffer for lastTickNano (stored as double, cast back to long)
+        long lastTickNano = (long) data.getBuffer("TimerA_lastTick");
+
         if (lastTickNano == 0) {
-            lastTickNano = now;
+            data.setBuffer("TimerA_lastTick", (double) now);
             return;
         }
 
         long elapsed = now - lastTickNano;
-        lastTickNano = now;
+        data.setBuffer("TimerA_lastTick", (double) now);
 
         // Ignore massive gaps (lag spikes, alt-tab, chunk loading, etc.)
         if (elapsed > 2_000_000_000L) { // > 2 seconds

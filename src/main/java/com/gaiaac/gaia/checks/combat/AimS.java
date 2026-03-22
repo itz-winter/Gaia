@@ -16,16 +16,18 @@ public class AimS extends Check {
         if (recentlyTeleported(data) || recentlyJoined(data)) return;
 
         float deltaYaw = data.getDeltaYaw();
+        float deltaPitch = data.getDeltaPitch();
 
-        // Detect snapping to exact degree increments (e.g., 5, 10, 15, 45, 90)
-        if (deltaYaw >= 5.0f && deltaYaw % 5.0f < 0.01f) {
+        // Only flag if BOTH yaw and pitch snap to exact 5° increments simultaneously — yaw alone is not suspicious
+        if (deltaYaw >= 10.0f && deltaPitch >= 5.0f
+                && deltaYaw % 5.0f < 0.001f && deltaPitch % 5.0f < 0.001f) {
             double buffer = data.addBuffer("aim_s_buffer", 1);
-            if (buffer > 10) {
-                flag(player, data, "stepSnap dYaw=" + deltaYaw);
-                data.setBuffer("aim_s_buffer", 0);
+            if (buffer > 15) {
+                flag(player, data, "stepSnap dYaw=" + deltaYaw + " dPitch=" + deltaPitch);
+                data.setBuffer("aim_s_buffer", 5);
             }
         } else {
-            data.decreaseBuffer("aim_s_buffer", 0.5);
+            data.decreaseBuffer("aim_s_buffer", 1.0);
         }
     }
 }

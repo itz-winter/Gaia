@@ -18,18 +18,18 @@ public class AimP extends Check {
         float deltaYaw = data.getDeltaYaw();
         float deltaPitch = data.getDeltaPitch();
 
-        if (deltaPitch > 0.5f && deltaYaw > 0.5f) {
+        if (deltaPitch > 1.0f && deltaYaw > 1.0f) {
             double ratio = deltaYaw / deltaPitch;
             double lastRatio = data.getBuffer("aim_p_lastRatio");
 
-            if (lastRatio > 0 && Math.abs(ratio - lastRatio) < 0.01 && ratio > 0.1) {
+            if (lastRatio > 0 && Math.abs(ratio - lastRatio) < 0.005 && ratio > 0.1) {
                 double buffer = data.addBuffer("aim_p_buffer", 1);
-                if (buffer > 12) {
+                if (buffer > 18) {
                     flag(player, data, "lockedRatio r=" + String.format("%.4f", ratio));
                     data.setBuffer("aim_p_buffer", 0);
                 }
             } else {
-                data.decreaseBuffer("aim_p_buffer", 0.5);
+                data.decreaseBuffer("aim_p_buffer", 1.0);
             }
             data.setBuffer("aim_p_lastRatio", ratio);
         }

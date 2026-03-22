@@ -18,11 +18,11 @@ public class AimV extends Check {
         float deltaYaw = data.getDeltaYaw();
         float deltaPitch = data.getDeltaPitch();
 
-        if (deltaYaw > 0.01f && deltaPitch > 0.01f) {
+        if (deltaYaw > 0.5f && deltaPitch > 0.5f) {
             double gcd = com.gaiaac.gaia.util.math.MathUtil.gcd(deltaYaw, deltaPitch);
-            if (gcd < 0.001 && deltaYaw > 1.0f) {
+            if (gcd < 0.0001 && deltaYaw > 2.0f && deltaPitch > 1.0f) {
                 double buffer = data.addBuffer("aim_v_buffer", 1);
-                if (buffer > 15) {
+                if (buffer > 20) {
                     flag(player, data, "invalidGCD gcd=" + String.format("%.6f", gcd));
                     data.setBuffer("aim_v_buffer", 0);
                 }
