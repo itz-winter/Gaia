@@ -65,6 +65,14 @@ public class ViolationManager {
         }
     }
 
+    /**
+     * Get the cached TPS value. Updated once per second on the main thread.
+     * Used by Check.isLowTPS() to avoid per-call reflection.
+     */
+    public double getCachedTPS() {
+        return cachedTPS;
+    }
+
     private void executePunishment(Player player, Check check, double vl) {
         String command = plugin.getConfigManager().getPunishmentCommand();
         if (command == null || command.isEmpty()) return;

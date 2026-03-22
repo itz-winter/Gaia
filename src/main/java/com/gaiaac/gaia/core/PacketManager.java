@@ -52,14 +52,19 @@ public class PacketManager implements PacketListener {
             data.handleMovement(wrapper.getPosition().getX(), wrapper.getPosition().getY(),
                     wrapper.getPosition().getZ(), wrapper.getYaw(), wrapper.getPitch(), wrapper.isOnGround());
             runChecks(cm.getMovementChecks(), player, data);
-            runChecks(cm.getCombatChecksByCategory("aim"), player, data);
+            // Only run aim checks if the player is actually in combat (attacked within last 2s)
+            if (System.currentTimeMillis() - data.getLastAttackTime() <= 2000) {
+                runChecks(cm.getCombatChecksByCategory("aim"), player, data);
+            }
 
         } else if (event.getPacketType() == PacketType.Play.Client.PLAYER_ROTATION) {
             WrapperPlayClientPlayerRotation wrapper = new WrapperPlayClientPlayerRotation(event);
             data.handleMovement(data.getX(), data.getY(), data.getZ(),
                     wrapper.getYaw(), wrapper.getPitch(), wrapper.isOnGround());
-            // Only aim checks on pure rotation
-            runChecks(cm.getCombatChecksByCategory("aim"), player, data);
+            // Only run aim checks if the player is actually in combat (attacked within last 2s)
+            if (System.currentTimeMillis() - data.getLastAttackTime() <= 2000) {
+                runChecks(cm.getCombatChecksByCategory("aim"), player, data);
+            }
 
         } else if (event.getPacketType() == PacketType.Play.Client.PLAYER_FLYING) {
             WrapperPlayClientPlayerFlying wrapper = new WrapperPlayClientPlayerFlying(event);
@@ -111,6 +116,28 @@ public class PacketManager implements PacketListener {
             WrapperPlayClientPlayerDigging wrapper = new WrapperPlayClientPlayerDigging(event);
             if (wrapper.getAction() == com.github.retrooper.packetevents.protocol.player.DiggingAction.RELEASE_USE_ITEM) {
                 data.setUsingItem(false);
+            }
+
+            // Map PacketEvents DiggingAction to our int codes for FastBreak
+            com.github.retrooper.packetevents.protocol.player.DiggingAction digAction = wrapper.getAction();
+            if (digAction == com.github.retrooper.packetevents.protocol.player.DiggingAction.START_DIGGING) {
+                data.setDiggingAction(0);
+                // Look up the block on the main thread (Bukkit API not safe on netty thread)
+                final int bx = wrapper.getBlockPosition().getX();
+                final int by = wrapper.getBlockPosition().getY();
+                final int bz = wrapper.getBlockPosition().getZ();
+                org.bukkit.Bukkit.getScheduler().runTask(plugin, () -> {
+                    try {
+                        org.bukkit.block.Block block = player.getWorld().getBlockAt(bx, by, bz);
+                        data.setLastDigBlock(block);
+                    } catch (Exception ignored) {}
+                });
+            } else if (digAction == com.github.retrooper.packetevents.protocol.player.DiggingAction.CANCELLED_DIGGING) {
+                data.setDiggingAction(1);
+            } else if (digAction == com.github.retrooper.packetevents.protocol.player.DiggingAction.FINISHED_DIGGING) {
+                data.setDiggingAction(2);
+            } else {
+                data.setDiggingAction(-1);
             }
             runChecks(cm.getPlayerChecksByCategory("fastbreak"), player, data);
 

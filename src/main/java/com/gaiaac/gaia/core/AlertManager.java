@@ -6,8 +6,10 @@ import org.bukkit.ChatColor;
 import org.bukkit.entity.Player;
 
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class AlertManager {
 
@@ -15,11 +17,24 @@ public class AlertManager {
     private static final String PREFIX = ChatColor.DARK_GRAY + "Gaia " + ChatColor.GRAY + "» " + ChatColor.RESET;
     private final Set<UUID> alertsDisabled = new HashSet<>();
 
+    // Rate limiting: max 1 alert per check per player per 500ms — prevents main-thread scheduling spam
+    private final Map<String, Long> lastAlertTime = new ConcurrentHashMap<>();
+    private static final long ALERT_COOLDOWN_MS = 500;
+
     public AlertManager(GaiaPlugin plugin) {
         this.plugin = plugin;
     }
 
     public void sendAlert(Player flaggedPlayer, Check check, double vl, double threshold, String debugInfo) {
+        // Rate limit alerts per player+check combination
+        String alertKey = flaggedPlayer.getUniqueId().toString() + ":" + check.getFullCheckName();
+        long now = System.currentTimeMillis();
+        Long lastTime = lastAlertTime.get(alertKey);
+        if (lastTime != null && now - lastTime < ALERT_COOLDOWN_MS) {
+            return; // Skip this alert — too soon since last one for same player+check
+        }
+        lastAlertTime.put(alertKey, now);
+
         String message = PREFIX + ChatColor.RED + flaggedPlayer.getName()
                 + ChatColor.GRAY + " failed "
                 + ChatColor.GOLD + check.getCheckName() + " (" + check.getType() + ")"
@@ -35,7 +50,10 @@ public class AlertManager {
         if (plugin.getConfigManager().isAlertsEnabled()) {
             Bukkit.getScheduler().runTask(plugin, () -> {
                 for (Player staff : Bukkit.getOnlinePlayers()) {
-                    if (staff.hasPermission("gaia.alerts") && !alertsDisabled.contains(staff.getUniqueId())) {
+                    // Use cached permission from PlayerData when available to avoid permission checks
+                    PlayerData staffData = plugin.getPlayerDataManager().getPlayerData(staff.getUniqueId());
+                    boolean hasAlerts = staffData != null ? staffData.hasAlertsPermission() : staff.hasPermission("gaia.alerts");
+                    if (hasAlerts && !alertsDisabled.contains(staff.getUniqueId())) {
                         staff.sendMessage(message);
                     }
                 }

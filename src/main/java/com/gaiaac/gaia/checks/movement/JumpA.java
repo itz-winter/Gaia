@@ -15,14 +15,10 @@ public class JumpA extends Check {
         if (data.wasOnGround() && !data.isOnGround() && data.getDeltaY() > 0) {
             double jumpHeight = data.getDeltaY();
             double maxAllowed = MAX_JUMP_HEIGHT + 0.05 + (data.getPing() / 500.0);
-            // Account for jump boost effect — try-catch for thread safety
-            try {
-                if (player.hasPotionEffect(org.bukkit.potion.PotionEffectType.JUMP_BOOST)) {
-                    int amplifier = player.getPotionEffect(org.bukkit.potion.PotionEffectType.JUMP_BOOST).getAmplifier();
-                    maxAllowed += (amplifier + 1) * 0.1;
-                }
-            } catch (Exception ignored) {
-                maxAllowed += 0.5; // Assume possible jump boost if we can't read it
+            // Account for jump boost effect — use cached amplifier (thread-safe)
+            int jumpAmp = data.getJumpBoostAmplifier();
+            if (jumpAmp >= 0) {
+                maxAllowed += (jumpAmp + 1) * 0.1;
             }
             if (jumpHeight > maxAllowed) {
                 flag(player, data, 1.5, "jumpHeight=" + String.format("%.4f", jumpHeight) + " max=" + String.format("%.4f", maxAllowed));

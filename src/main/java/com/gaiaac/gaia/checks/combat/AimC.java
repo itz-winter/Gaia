@@ -19,10 +19,14 @@ public class AimC extends Check {
     public void handle(Player player, PlayerData data) {
         if (recentlyTeleported(data) || recentlyJoined(data)) return;
 
+        // Only check during combat
+        long timeSinceAttack = System.currentTimeMillis() - data.getLastAttackTime();
+        if (timeSinceAttack > 2000) return;
+
         float deltaYaw = data.getDeltaYaw();
         float deltaPitch = data.getDeltaPitch();
 
-        if (deltaYaw < 2.0f || deltaPitch < 2.0f) return;
+        if (deltaYaw < 3.0f || deltaPitch < 3.0f) return;
 
         // Check for constant deltas (linear aim)
         float lastDeltaYaw = data.getLastDeltaYaw();
@@ -32,14 +36,14 @@ public class AimC extends Check {
         float pitchDiff = Math.abs(deltaPitch - lastDeltaPitch);
 
         // Nearly identical consecutive rotations suggest automation
-        if (yawDiff < 0.01f && pitchDiff < 0.01f && deltaYaw > 3.0f) {
+        if (yawDiff < 0.005f && pitchDiff < 0.005f && deltaYaw > 4.0f) {
             double buffer = data.addBuffer("aim_c_buffer", 1);
-            if (buffer > 6) {
+            if (buffer > 8) {
                 flag(player, data, 1.0, "linearAim yawDiff=" + yawDiff + " pitchDiff=" + pitchDiff);
-                data.setBuffer("aim_c_buffer", 0);
+                data.setBuffer("aim_c_buffer", 2);
             }
         } else {
-            data.decreaseBuffer("aim_c_buffer", 0.5);
+            data.decreaseBuffer("aim_c_buffer", 0.75);
         }
     }
 }

@@ -7,8 +7,10 @@
 general:
   # Violation decay interval in seconds (default: 300 = 5 minutes)
   decay-interval: 300
-  # Amount to decay violations by each interval
-  decay-amount: 1.0
+  # All player's violations will be cleared every interval
+  # decay-amount is how many violation points to remove from each check every decay interval. Set to "all" to clear all violations instead.
+  decay-amount: "all"
+  decay-message: "&8Gaia &7\u00BB &7Violations cleared for all online players!"
 
 # ================================================
 #              Discord Integration

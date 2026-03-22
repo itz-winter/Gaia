@@ -24,14 +24,10 @@ public class SpeedA extends Check {
         if (data.isOnGround()) {
             double maxSpeed = 0.36; // Base sprint speed with momentum
 
-            // Speed effect — try-catch because Bukkit API may not be fully thread-safe
-            try {
-                if (player.hasPotionEffect(org.bukkit.potion.PotionEffectType.SPEED)) {
-                    int amp = player.getPotionEffect(org.bukkit.potion.PotionEffectType.SPEED).getAmplifier();
-                    maxSpeed += (amp + 1) * 0.062;
-                }
-            } catch (Exception ignored) {
-                maxSpeed += 0.2; // Assume possible speed effect if we can't read it
+            // Speed effect — use cached amplifier from PlayerData (set on main thread)
+            int speedAmp = data.getSpeedAmplifier();
+            if (speedAmp >= 0) {
+                maxSpeed += (speedAmp + 1) * 0.062;
             }
 
             // Soul speed / ice handling
@@ -58,14 +54,10 @@ public class SpeedA extends Check {
             double maxAirAccel = 0.026; // Sprint air acceleration
             double expectedMax = lastDXZ * 0.91 + maxAirAccel;
 
-            // Speed effect boost — try-catch for thread safety
-            try {
-                if (player.hasPotionEffect(org.bukkit.potion.PotionEffectType.SPEED)) {
-                    int amp = player.getPotionEffect(org.bukkit.potion.PotionEffectType.SPEED).getAmplifier();
-                    expectedMax += (amp + 1) * 0.02;
-                }
-            } catch (Exception ignored) {
-                expectedMax += 0.15;
+            // Speed effect boost — use cached amplifier from PlayerData (set on main thread)
+            int speedAmp = data.getSpeedAmplifier();
+            if (speedAmp >= 0) {
+                expectedMax += (speedAmp + 1) * 0.02;
             }
 
             // Generous tolerance for lag

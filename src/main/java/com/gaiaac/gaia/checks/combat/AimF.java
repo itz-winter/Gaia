@@ -22,6 +22,10 @@ public class AimF extends Check {
     public void handle(Player player, PlayerData data) {
         if (recentlyTeleported(data) || recentlyJoined(data)) return;
 
+        // Only check during combat
+        long timeSinceAttack = System.currentTimeMillis() - data.getLastAttackTime();
+        if (timeSinceAttack > 2000) return;
+
         float deltaYaw = data.getDeltaYaw();
         float deltaPitch = data.getDeltaPitch();
 
@@ -31,20 +35,20 @@ public class AimF extends Check {
         double yawGcd = gcd(deltaYaw, data.getLastDeltaYaw());
         double pitchGcd = gcd(deltaPitch, data.getLastDeltaPitch());
 
-        boolean yawBypass = yawGcd < MIN_GCD && deltaYaw > 1.0f;
-        boolean pitchBypass = pitchGcd < MIN_GCD && deltaPitch > 1.0f;
+        boolean yawBypass = yawGcd < MIN_GCD && deltaYaw > 1.5f;
+        boolean pitchBypass = pitchGcd < MIN_GCD && deltaPitch > 1.5f;
 
         if (yawBypass || pitchBypass) {
             double buffer = data.addBuffer("aim_f_buffer", 1);
-            if (buffer > 5) {
+            if (buffer > 7) {
                 flag(player, data, 1.5, "gcdBypass yGcd=" + String.format("%.8f", yawGcd)
                         + " pGcd=" + String.format("%.8f", pitchGcd)
                         + " dYaw=" + String.format("%.4f", deltaYaw)
                         + " dPitch=" + String.format("%.4f", deltaPitch));
-                data.setBuffer("aim_f_buffer", 2);
+                data.setBuffer("aim_f_buffer", 3);
             }
         } else {
-            data.decreaseBuffer("aim_f_buffer", 0.25);
+            data.decreaseBuffer("aim_f_buffer", 0.5);
         }
     }
 

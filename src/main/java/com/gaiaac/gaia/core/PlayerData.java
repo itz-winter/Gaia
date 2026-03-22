@@ -13,6 +13,11 @@ public class PlayerData {
     private final String name;
     private transient Player player;
 
+    // Cached potion effect amplifiers — updated from main thread, read from netty thread
+    private volatile int speedAmplifier = -1; // -1 means no effect
+    private volatile int jumpBoostAmplifier = -1;
+    private volatile boolean hasLevitation = false;
+
     // Position tracking
     private double x, y, z;
     private double lastX, lastY, lastZ;
@@ -42,7 +47,7 @@ public class PlayerData {
     private long lastAttackTime;
     private long lastBlockPlaceTime;
     private int clicksPerSecond;
-    private final List<Long> clickTimestamps = Collections.synchronizedList(new ArrayList<>());
+    private final ArrayDeque<Long> clickTimestamps = new ArrayDeque<>(24);
     private UUID lastTargetUUID;
     private int lastTargetEntityId = -1;
     private int attackTargetCount; // entities attacked within current tick window
@@ -51,6 +56,10 @@ public class PlayerData {
     private boolean isUsingItem;
     private long lastItemUseTime;
 
+    // Digging / block breaking
+    private volatile int diggingAction = -1; // 0=START, 1=CANCEL, 2=FINISH, -1=none
+    private volatile org.bukkit.block.Block lastDigBlock;
+
     // Timing
     private long joinTime;
     private long lastPacketTime;
@@ -58,7 +67,7 @@ public class PlayerData {
     private long lastTeleportTime;
     private int serverTick;
     private int movementsSinceLastTeleport;
-    private final List<Long> packetTimestamps = Collections.synchronizedList(new ArrayList<>(50));
+    private final ArrayDeque<Long> packetTimestamps = new ArrayDeque<>(50);
 
     // Violations
     private final Map<String, Double> violations = new ConcurrentHashMap<>();
@@ -222,38 +231,38 @@ public class PlayerData {
         return newVal;
     }
 
-    // === Click Tracking ===
+    // === Click Tracking (ArrayDeque — O(1) add/poll, no synchronization needed on netty thread) ===
 
     public void addClick() {
         long now = System.currentTimeMillis();
-        clickTimestamps.add(now);
-        // Trim old entries (older than 1 second) from front
-        while (!clickTimestamps.isEmpty() && now - clickTimestamps.get(0) > 1000) {
-            clickTimestamps.remove(0);
+        clickTimestamps.addLast(now);
+        // Trim old entries (older than 1 second) from front — O(1) per poll
+        while (!clickTimestamps.isEmpty() && now - clickTimestamps.peekFirst() > 1000) {
+            clickTimestamps.pollFirst();
         }
         clicksPerSecond = clickTimestamps.size();
     }
 
     public int getCPS() {
         long now = System.currentTimeMillis();
-        while (!clickTimestamps.isEmpty() && now - clickTimestamps.get(0) > 1000) {
-            clickTimestamps.remove(0);
+        while (!clickTimestamps.isEmpty() && now - clickTimestamps.peekFirst() > 1000) {
+            clickTimestamps.pollFirst();
         }
         return clickTimestamps.size();
     }
 
     public List<Long> getClickTimestamps() {
-        return clickTimestamps;
+        return new ArrayList<>(clickTimestamps);
     }
 
-    // === Packet Timing ===
+    // === Packet Timing (ArrayDeque — O(1) add/poll) ===
 
     public void addPacketTimestamp() {
         long now = System.currentTimeMillis();
-        packetTimestamps.add(now);
-        // Keep max 40 entries (~2 seconds at 20 TPS). Trim from front — O(1) amortized.
+        packetTimestamps.addLast(now);
+        // Keep max 40 entries (~2 seconds at 20 TPS). Poll from front — O(1).
         while (packetTimestamps.size() > 40) {
-            packetTimestamps.remove(0);
+            packetTimestamps.pollFirst();
         }
         lastPacketTime = now;
     }
@@ -317,6 +326,10 @@ public class PlayerData {
     public void setLastAttackTime(long lastAttackTime) { this.lastAttackTime = lastAttackTime; }
     public long getLastBlockPlaceTime() { return lastBlockPlaceTime; }
     public void setLastBlockPlaceTime(long lastBlockPlaceTime) { this.lastBlockPlaceTime = lastBlockPlaceTime; }
+    public int getDiggingAction() { return diggingAction; }
+    public void setDiggingAction(int action) { this.diggingAction = action; }
+    public org.bukkit.block.Block getLastDigBlock() { return lastDigBlock; }
+    public void setLastDigBlock(org.bukkit.block.Block block) { this.lastDigBlock = block; }
     public int getClicksPerSecond() { return clicksPerSecond; }
     public UUID getLastTargetUUID() { return lastTargetUUID; }
     public void setLastTargetUUID(UUID lastTargetUUID) { this.lastTargetUUID = lastTargetUUID; }
@@ -331,7 +344,7 @@ public class PlayerData {
     public void setServerTick(int serverTick) { this.serverTick = serverTick; }
     public int getMovementsSinceLastTeleport() { return movementsSinceLastTeleport; }
     public void resetMovementsSinceLastTeleport() { this.movementsSinceLastTeleport = 0; }
-    public List<Long> getPacketTimestamps() { return packetTimestamps; }
+    public List<Long> getPacketTimestamps() { return new ArrayList<>(packetTimestamps); }
 
     public String getClientBrand() { return clientBrand; }
     public void setClientBrand(String clientBrand) { this.clientBrand = clientBrand; }
@@ -398,4 +411,12 @@ public class PlayerData {
     public boolean isExempt() {
         return bypassed || gameMode == GameMode.CREATIVE || gameMode == GameMode.SPECTATOR;
     }
+
+    // === Cached Potion Effects (set from main thread, read from netty thread) ===
+    public int getSpeedAmplifier() { return speedAmplifier; }
+    public void setSpeedAmplifier(int amp) { this.speedAmplifier = amp; }
+    public int getJumpBoostAmplifier() { return jumpBoostAmplifier; }
+    public void setJumpBoostAmplifier(int amp) { this.jumpBoostAmplifier = amp; }
+    public boolean hasLevitation() { return hasLevitation; }
+    public void setHasLevitation(boolean has) { this.hasLevitation = has; }
 }

@@ -9,6 +9,8 @@ import org.bukkit.entity.Player;
  * Some timer cheats alternate between fast and slow to maintain average TPS
  * while still gaining advantage. Checks coefficient of variation of intervals.
  * Very lenient — normal WiFi jitter causes high CV so threshold is strict.
+ *
+ * Improved: requires meaningful movement, larger sample, higher CV threshold.
  */
 public class TimerD extends Check {
     public TimerD(GaiaPlugin plugin) { super(plugin, "Timer", "D", "timer", true, 20); }
@@ -18,8 +20,14 @@ public class TimerD extends Check {
         if (recentlyTeleported(data) || recentlyJoined(data)) return;
         if (data.isInVehicle() || isLowTPS()) return;
 
+        // Don't check oscillation when standing still — idle flying packets have naturally high jitter
+        if (data.getDeltaXZ() < 0.05) {
+            data.decreaseBuffer("timer_d_buffer", 1.0);
+            return;
+        }
+
         java.util.List<Long> timestamps = data.getPacketTimestamps();
-        if (timestamps.size() < 20) return; // Need a bigger sample for meaningful stats
+        if (timestamps.size() < 22) return; // Need a bigger sample for meaningful stats
 
         // Use the last 20 intervals
         int sampleSize = 20;
@@ -42,11 +50,11 @@ public class TimerD extends Check {
 
         double cv = std / mean;
 
-        // CV > 1.2 is extremely abnormal even for bad connections once lag spikes are filtered
-        // Normal WiFi jitter CV is ~0.3-0.6, bad connections ~0.6-0.9
-        if (cv > 1.2 && data.getDeltaXZ() > 0.05) {
+        // CV > 1.5 is extremely abnormal even for bad connections once lag spikes are filtered
+        // Normal WiFi jitter CV is ~0.3-0.6, bad connections ~0.6-1.0
+        if (cv > 1.5 && data.getDeltaXZ() > 0.10) {
             double buffer = data.addBuffer("timer_d_buffer", 1);
-            if (buffer > 10) {
+            if (buffer > 12) {
                 flag(player, data, "timerOscillation cv=" + String.format("%.2f", cv));
                 data.setBuffer("timer_d_buffer", 5);
             }

@@ -20,26 +20,28 @@ public class AimB extends Check {
     public void handle(Player player, PlayerData data) {
         if (recentlyTeleported(data) || recentlyJoined(data)) return;
 
+        // Only check during combat
+        long timeSinceAttack = System.currentTimeMillis() - data.getLastAttackTime();
+        if (timeSinceAttack > 2000) return;
+
         float deltaYaw = data.getDeltaYaw();
         float lastDeltaYaw = data.getLastDeltaYaw();
         float deltaPitch = data.getDeltaPitch();
-        float lastDeltaPitch = data.getLastDeltaPitch();
 
-        if (deltaYaw < 0.5f && deltaPitch < 0.5f) return;
+        if (deltaYaw < 1.0f && deltaPitch < 1.0f) return;
 
         // Check for impossible acceleration
         float yawAccel = Math.abs(deltaYaw - lastDeltaYaw);
-        float pitchAccel = Math.abs(deltaPitch - lastDeltaPitch);
 
         // Very high acceleration with very small prior movement
-        if (yawAccel > 50 && lastDeltaYaw < 1.0f && deltaYaw > 30) {
+        if (yawAccel > 60 && lastDeltaYaw < 0.5f && deltaYaw > 40) {
             double buffer = data.addBuffer("aim_b_buffer", 1);
-            if (buffer > 3) {
+            if (buffer > 4) {
                 flag(player, data, 1.0, "yawAccel=" + yawAccel + " dYaw=" + deltaYaw + " lastDYaw=" + lastDeltaYaw);
-                data.setBuffer("aim_b_buffer", 0);
+                data.setBuffer("aim_b_buffer", 1);
             }
         } else {
-            data.decreaseBuffer("aim_b_buffer", 0.25);
+            data.decreaseBuffer("aim_b_buffer", 0.5);
         }
     }
 }

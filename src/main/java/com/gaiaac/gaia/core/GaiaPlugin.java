@@ -80,6 +80,36 @@ public class GaiaPlugin extends JavaPlugin {
             violationManager.decayAllViolations();
         }, 20L * decayInterval, 20L * decayInterval);
 
+        // Schedule potion effect caching task — runs every 4 ticks (200ms) on main thread
+        // This avoids calling Bukkit potion API from netty/async threads (like Grim/Vulcan pattern)
+        Bukkit.getScheduler().runTaskTimer(this, () -> {
+            for (PlayerData data : playerDataManager.getAllPlayerData().values()) {
+                org.bukkit.entity.Player p = data.getPlayer();
+                if (p == null || !p.isOnline()) continue;
+                try {
+                    // Cache speed effect
+                    if (p.hasPotionEffect(org.bukkit.potion.PotionEffectType.SPEED)) {
+                        org.bukkit.potion.PotionEffect eff = p.getPotionEffect(org.bukkit.potion.PotionEffectType.SPEED);
+                        data.setSpeedAmplifier(eff != null ? eff.getAmplifier() : -1);
+                    } else {
+                        data.setSpeedAmplifier(-1);
+                    }
+                    // Cache jump boost effect
+                    if (p.hasPotionEffect(org.bukkit.potion.PotionEffectType.JUMP_BOOST)) {
+                        org.bukkit.potion.PotionEffect eff = p.getPotionEffect(org.bukkit.potion.PotionEffectType.JUMP_BOOST);
+                        data.setJumpBoostAmplifier(eff != null ? eff.getAmplifier() : -1);
+                    } else {
+                        data.setJumpBoostAmplifier(-1);
+                    }
+                    // Cache levitation effect
+                    data.setHasLevitation(p.hasPotionEffect(org.bukkit.potion.PotionEffectType.LEVITATION));
+                    // Also refresh permissions periodically (player may gain/lose perms)
+                    data.setBypassed(p.isOp() || p.hasPermission("gaia.bypass"));
+                    data.setAlertsPermission(p.hasPermission("gaia.alerts"));
+                } catch (Exception ignored) {}
+            }
+        }, 4L, 4L);
+
         long elapsed = System.currentTimeMillis() - start;
         getLogger().info("Gaia Anticheat v" + getDescription().getVersion() + " enabled in " + elapsed + "ms");
     }

@@ -18,24 +18,28 @@ public class AimE extends Check {
     public void handle(Player player, PlayerData data) {
         if (recentlyTeleported(data) || recentlyJoined(data)) return;
 
+        // Only check during combat
+        long timeSinceAttack = System.currentTimeMillis() - data.getLastAttackTime();
+        if (timeSinceAttack > 2000) return;
+
         float deltaYaw = data.getDeltaYaw();
         float deltaPitch = data.getDeltaPitch();
 
-        if (deltaYaw < 0.5f || deltaPitch < 0.5f) return;
+        if (deltaYaw < 1.0f || deltaPitch < 1.0f) return;
 
         // Detect constant yaw/pitch deltas over multiple ticks
         float yawRatio = deltaYaw > 0 ? data.getLastDeltaYaw() / deltaYaw : 0;
         float pitchRatio = deltaPitch > 0 ? data.getLastDeltaPitch() / deltaPitch : 0;
 
         // If ratio is exactly 1.0, the delta is constant
-        if (Math.abs(yawRatio - 1.0) < 0.001 && Math.abs(pitchRatio - 1.0) < 0.001 && deltaYaw > 3.0f) {
+        if (Math.abs(yawRatio - 1.0) < 0.0005 && Math.abs(pitchRatio - 1.0) < 0.0005 && deltaYaw > 4.0f) {
             double buffer = data.addBuffer("aim_e_buffer", 1);
-            if (buffer > 4) {
+            if (buffer > 6) {
                 flag(player, data, 1.5, "constantDelta yawRatio=" + yawRatio + " pitchRatio=" + pitchRatio);
-                data.setBuffer("aim_e_buffer", 1);
+                data.setBuffer("aim_e_buffer", 2);
             }
         } else {
-            data.decreaseBuffer("aim_e_buffer", 0.25);
+            data.decreaseBuffer("aim_e_buffer", 0.5);
         }
     }
 }

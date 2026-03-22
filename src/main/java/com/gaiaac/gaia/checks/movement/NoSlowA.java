@@ -32,14 +32,10 @@ public class NoSlowA extends Check {
         // Max speed while using item (with generous tolerance)
         double maxItemSpeed = 0.13 + (data.getPing() / 1000.0);
 
-        // Speed effect — try-catch for thread safety
-        try {
-            if (player.hasPotionEffect(org.bukkit.potion.PotionEffectType.SPEED)) {
-                int amp = player.getPotionEffect(org.bukkit.potion.PotionEffectType.SPEED).getAmplifier();
-                maxItemSpeed += (amp + 1) * 0.03;
-            }
-        } catch (Exception ignored) {
-            maxItemSpeed += 0.15;
+        // Speed effect — use cached amplifier from PlayerData (thread-safe)
+        int speedAmp = data.getSpeedAmplifier();
+        if (speedAmp >= 0) {
+            maxItemSpeed += (speedAmp + 1) * 0.03;
         }
 
         if (data.getDeltaXZ() > maxItemSpeed && data.isOnGround()) {

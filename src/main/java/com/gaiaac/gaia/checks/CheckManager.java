@@ -18,6 +18,11 @@ public class CheckManager {
     private final List<Check> movementChecks = new ArrayList<>();
     private final List<Check> playerChecks = new ArrayList<>();
 
+    // Pre-cached unmodifiable views — avoid creating wrapper objects per call
+    private List<Check> combatChecksView;
+    private List<Check> movementChecksView;
+    private List<Check> playerChecksView;
+
     // Pre-indexed category lists for O(1) dispatch — avoids iterating + string compare per packet
     private final Map<String, List<Check>> combatByCategory = new HashMap<>();
     private final Map<String, List<Check>> movementByCategory = new HashMap<>();
@@ -42,6 +47,11 @@ public class CheckManager {
         buildCategoryIndex(combatChecks, combatByCategory);
         buildCategoryIndex(movementChecks, movementByCategory);
         buildCategoryIndex(playerChecks, playerByCategory);
+
+        // Pre-cache unmodifiable views — avoid creating wrapper objects per hot-path call
+        combatChecksView = Collections.unmodifiableList(combatChecks);
+        movementChecksView = Collections.unmodifiableList(movementChecks);
+        playerChecksView = Collections.unmodifiableList(playerChecks);
 
         plugin.getLogger().info("Registered " + (combatChecks.size() + movementChecks.size() + playerChecks.size()) + " checks.");
     }
@@ -351,15 +361,15 @@ public class CheckManager {
     }
 
     public List<Check> getCombatChecks() {
-        return Collections.unmodifiableList(combatChecks);
+        return combatChecksView;
     }
 
     public List<Check> getMovementChecks() {
-        return Collections.unmodifiableList(movementChecks);
+        return movementChecksView;
     }
 
     public List<Check> getPlayerChecks() {
-        return Collections.unmodifiableList(playerChecks);
+        return playerChecksView;
     }
 
     /**

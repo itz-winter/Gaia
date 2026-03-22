@@ -19,22 +19,26 @@ public class AimD extends Check {
     public void handle(Player player, PlayerData data) {
         if (recentlyTeleported(data) || recentlyJoined(data)) return;
 
+        // Only check during combat
+        long timeSinceAttack = System.currentTimeMillis() - data.getLastAttackTime();
+        if (timeSinceAttack > 2000) return;
+
         float deltaPitch = data.getDeltaPitch();
         float deltaYaw = data.getDeltaYaw();
 
-        if (deltaYaw < 1.0f && deltaPitch < 1.0f) return;
+        if (deltaYaw < 2.0f && deltaPitch < 2.0f) return;
 
         // Check for impossibly smooth pitch (no micro-adjustments)
         float pitchDiff = Math.abs(deltaPitch - data.getLastDeltaPitch());
 
-        if (pitchDiff == 0 && deltaPitch > 2.0f && deltaYaw > 2.0f) {
+        if (pitchDiff == 0 && deltaPitch > 3.0f && deltaYaw > 3.0f) {
             double buffer = data.addBuffer("aim_d_buffer", 1);
-            if (buffer > 4) {
+            if (buffer > 6) {
                 flag(player, data, 1.5, "perfectTracking pitchDiff=0 dPitch=" + deltaPitch + " dYaw=" + deltaYaw);
-                data.setBuffer("aim_d_buffer", 1);
+                data.setBuffer("aim_d_buffer", 2);
             }
         } else {
-            data.decreaseBuffer("aim_d_buffer", 0.25);
+            data.decreaseBuffer("aim_d_buffer", 0.5);
         }
     }
 }

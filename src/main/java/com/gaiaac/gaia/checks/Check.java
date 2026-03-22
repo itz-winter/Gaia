@@ -10,6 +10,7 @@ public abstract class Check {
     private final String checkName;
     private final String type;
     private final String checkCategory;
+    private final String fullCheckName; // Pre-cached — avoid string concat on every call
     private boolean enabled;
     private double threshold;
     private String bypassPermission;
@@ -20,6 +21,7 @@ public abstract class Check {
         this.checkName = checkName;
         this.type = type;
         this.checkCategory = checkCategory.toLowerCase();
+        this.fullCheckName = checkName + " (" + type + ")"; // Cache once at construction
         this.enabled = enabled;
         this.threshold = threshold;
         this.bypassPermission = "gaia." + checkName.toLowerCase() + ".bypass";
@@ -69,16 +71,10 @@ public abstract class Check {
 
     /**
      * Check if TPS is too low to reliably detect cheats.
+     * Uses the cached TPS value from ViolationManager — no reflection overhead.
      */
     protected boolean isLowTPS() {
-        // Use Paper TPS estimation via reflection for cross-compatibility
-        try {
-            java.lang.reflect.Method getTPS = org.bukkit.Bukkit.class.getMethod("getTPS");
-            double[] tps = (double[]) getTPS.invoke(null);
-            return tps[0] < 18.0;
-        } catch (Exception e) {
-            return false; // Older server versions or Spigot without getTPS
-        }
+        return plugin.getViolationManager().getCachedTPS() < 18.0;
     }
 
     /**
@@ -112,7 +108,7 @@ public abstract class Check {
     public String getCheckName() { return checkName; }
     public String getType() { return type; }
     public String getCheckCategory() { return checkCategory; }
-    public String getFullCheckName() { return checkName + " (" + type + ")"; }
+    public String getFullCheckName() { return fullCheckName; }
     public boolean isEnabled() { return enabled; }
     public void setEnabled(boolean enabled) { this.enabled = enabled; }
     public double getThreshold() { return threshold; }
