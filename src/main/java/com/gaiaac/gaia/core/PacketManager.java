@@ -101,11 +101,12 @@ public class PacketManager implements PacketListener {
 
         // === Block placement ===
         } else if (event.getPacketType() == PacketType.Play.Client.PLAYER_BLOCK_PLACEMENT) {
-            data.setLastBlockPlaceTime(System.currentTimeMillis());
-            runChecks(cm.getMovementChecksByCategory("scaffold"), player, data);
+            // Run checks BEFORE updating timestamp — checks need to compare against the PREVIOUS placement time
             runChecks(cm.getPlayerChecksByCategory("fastplace"), player, data);
+            runChecks(cm.getMovementChecksByCategory("scaffold"), player, data);
             runChecks(cm.getPlayerChecksByCategory("airplace"), player, data);
             runChecks(cm.getPlayerChecksByCategory("tower"), player, data);
+            data.setLastBlockPlaceTime(System.currentTimeMillis());
 
         // === Digging ===
         } else if (event.getPacketType() == PacketType.Play.Client.PLAYER_DIGGING) {

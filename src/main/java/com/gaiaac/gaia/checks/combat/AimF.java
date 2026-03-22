@@ -31,12 +31,14 @@ public class AimF extends Check {
         double yawGcd = gcd(deltaYaw, data.getLastDeltaYaw());
         double pitchGcd = gcd(deltaPitch, data.getLastDeltaPitch());
 
-        boolean yawBypass = yawGcd < MIN_GCD && deltaYaw > 1.5f;
-        boolean pitchBypass = pitchGcd < MIN_GCD && deltaPitch > 1.5f;
+        // Require BOTH axes to show GCD bypass — a single tiny GCD on one axis
+        // is common with certain mouse sensitivities and small movements
+        boolean yawBypass = yawGcd < MIN_GCD && deltaYaw > 2.0f;
+        boolean pitchBypass = pitchGcd < MIN_GCD && deltaPitch > 2.0f;
 
-        if (yawBypass || pitchBypass) {
+        if (yawBypass && pitchBypass) {
             double buffer = data.addBuffer("aim_f_buffer", 1);
-            if (buffer > 7) {
+            if (buffer > 10) {
                 flag(player, data, 1.5, "gcdBypass yGcd=" + String.format("%.8f", yawGcd)
                         + " pGcd=" + String.format("%.8f", pitchGcd)
                         + " dYaw=" + String.format("%.4f", deltaYaw)
