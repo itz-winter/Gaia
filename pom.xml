@@ -38,15 +38,15 @@
         <dependency>
             <groupId>org.spigotmc</groupId>
             <artifactId>spigot-api</artifactId>
-            <version>1.21-R0.1-SNAPSHOT</version>
+            <version>1.21.4-R0.1-SNAPSHOT</version>
             <scope>provided</scope>
         </dependency>
 
-        <!-- PacketEvents -->
+        <!-- PacketEvents — 2.9.0 supports Minecraft 25.x/26.x (new year-based versioning) -->
         <dependency>
             <groupId>com.github.retrooper</groupId>
             <artifactId>packetevents-spigot</artifactId>
-            <version>2.7.0</version>
+            <version>2.9.0</version>
             <scope>provided</scope>
         </dependency>
     </dependencies>

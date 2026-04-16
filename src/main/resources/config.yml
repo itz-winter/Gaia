@@ -1,8 +1,10 @@
 # ================================================
 #          Gaia Anticheat Configuration
 #        Packet-level Minecraft Anticheat
-#          Supports MC 1.8 - 1.21.11
+#          Supports MC 1.8 - 26.1.2
 # ================================================
+
+config-version: 1 # dont touch pls
 
 general:
   # Violation decay interval in seconds (default: 300 = 5 minutes)
@@ -11,6 +13,18 @@ general:
   # decay-amount is how many violation points to remove from each check every decay interval. Set to "all" to clear all violations instead.
   decay-amount: "all"
   decay-message: "&8Gaia &7\u00BB &7Violations cleared for all online players!"
+
+# ================================================
+#               Debug Settings
+# ================================================
+debug:
+  # Enable verbose console logging for all flag events (even below threshold).
+  # Includes full player state: position, TPS, ping, motion, buffers, exemptions.
+  # Useful for diagnosing false positives / missed detections.
+  # Disable in production — adds console spam.
+  enabled: false
+  # If true, log every check evaluation (not just flags). VERY spammy — only for deep diagnosis.
+  verbose: false
 
 # ================================================
 #              Discord Integration
@@ -25,7 +39,7 @@ discord:
 alerts:
   enabled: true
   console: true
-  # Format: {player}, {check}, {type}, {vl}, {threshold}
+  # placeholders: {player}, {check}, {type}, {vl}, {threshold}
   format: "&8Gaia &7\u00BB &f{player} &7failed &c{check} &7({type}) &7[&f{vl}&7/&f{threshold}&7]"
 
 # ================================================
@@ -34,7 +48,7 @@ alerts:
 punishment:
   enabled: true
   # Command to execute when VL exceeds threshold. {player} is replaced with player name.
-  command: "kick {player} [Gaia] Unfair Advantage"
+  command: "kick {player} [Gaia] {check} ({type}) {vl}/{threshold}"
 
 # ================================================
 #               Check Settings

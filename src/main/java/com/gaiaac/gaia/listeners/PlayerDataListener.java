@@ -38,6 +38,8 @@ public class PlayerDataListener implements Listener {
     @EventHandler(priority = EventPriority.MONITOR)
     public void onPlayerQuit(PlayerQuitEvent event) {
         plugin.getPlayerDataManager().removePlayerData(event.getPlayer().getUniqueId());
+        // Clean up any debug watches for or by this player
+        plugin.getAlertManager().removeAllWatches(event.getPlayer().getUniqueId());
     }
 
     @EventHandler(priority = EventPriority.MONITOR)

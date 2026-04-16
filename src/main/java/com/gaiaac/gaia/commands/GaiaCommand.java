@@ -69,7 +69,8 @@ public class GaiaCommand implements CommandExecutor, TabCompleter {
 
     private void sendHelp(CommandSender sender) {
         sender.sendMessage(PREFIX + ChatColor.GOLD + "Gaia Anticheat Commands:");
-        sender.sendMessage(ChatColor.GRAY + "  /gaia debug <player>" + ChatColor.WHITE + " - Toggle debug mode for a player");
+        sender.sendMessage(ChatColor.GRAY + "  /gaia debug" + ChatColor.WHITE + " - Toggle global debug mode (console logging)");
+        sender.sendMessage(ChatColor.GRAY + "  /gaia debug <player>" + ChatColor.WHITE + " - Watch a player (all their flags sent to you)");
         sender.sendMessage(ChatColor.GRAY + "  /gaia violations <player>" + ChatColor.WHITE + " - View player violations");
         sender.sendMessage(ChatColor.GRAY + "  /gaia reload" + ChatColor.WHITE + " - Reload configuration");
         sender.sendMessage(ChatColor.GRAY + "  /gaia alerts" + ChatColor.WHITE + " - Toggle alert notifications");
@@ -77,11 +78,19 @@ public class GaiaCommand implements CommandExecutor, TabCompleter {
     }
 
     private void handleDebug(CommandSender sender, String[] args) {
+        // /gaia debug — no target: toggle global console debug mode
         if (args.length < 2) {
-            sender.sendMessage(PREFIX + ChatColor.RED + "Usage: /gaia debug <player>");
+            boolean now = plugin.getAlertManager().toggleGlobalDebugMode();
+            if (now) {
+                sender.sendMessage(PREFIX + ChatColor.GREEN + "Global debug mode " + ChatColor.BOLD + "ENABLED"
+                        + ChatColor.RESET + ChatColor.GREEN + ". All flag events will be logged to console with full detail.");
+            } else {
+                sender.sendMessage(PREFIX + ChatColor.RED + "Global debug mode " + ChatColor.BOLD + "DISABLED" + ChatColor.RESET + ChatColor.RED + ".");
+            }
             return;
         }
 
+        // /gaia debug <player> — toggle watching a specific player
         Player target = Bukkit.getPlayer(args[1]);
         if (target == null) {
             sender.sendMessage(PREFIX + ChatColor.RED + "Player not found: " + args[1]);
@@ -94,24 +103,36 @@ public class GaiaCommand implements CommandExecutor, TabCompleter {
             return;
         }
 
-        sender.sendMessage(PREFIX + ChatColor.GOLD + "Debug info for " + ChatColor.WHITE + target.getName());
-        sender.sendMessage(ChatColor.GRAY + "  Position: " + ChatColor.WHITE +
-                String.format("%.2f, %.2f, %.2f", data.getX(), data.getY(), data.getZ()));
-        sender.sendMessage(ChatColor.GRAY + "  OnGround: " + ChatColor.WHITE + data.isOnGround());
-        sender.sendMessage(ChatColor.GRAY + "  Sprinting: " + ChatColor.WHITE + data.isSprinting());
-        sender.sendMessage(ChatColor.GRAY + "  Sneaking: " + ChatColor.WHITE + data.isSneaking());
-        sender.sendMessage(ChatColor.GRAY + "  Flying: " + ChatColor.WHITE + data.isFlying());
-        sender.sendMessage(ChatColor.GRAY + "  InVehicle: " + ChatColor.WHITE + data.isInVehicle());
-        sender.sendMessage(ChatColor.GRAY + "  Gliding: " + ChatColor.WHITE + data.isGliding());
-        sender.sendMessage(ChatColor.GRAY + "  Swimming: " + ChatColor.WHITE + data.isSwimming());
-        sender.sendMessage(ChatColor.GRAY + "  AirTicks: " + ChatColor.WHITE + data.getAirTicks());
-        sender.sendMessage(ChatColor.GRAY + "  GroundTicks: " + ChatColor.WHITE + data.getGroundTicks());
-        sender.sendMessage(ChatColor.GRAY + "  Ping: " + ChatColor.WHITE + data.getPing() + "ms");
-        sender.sendMessage(ChatColor.GRAY + "  Client: " + ChatColor.WHITE + data.getClientBrand()
-                + " (v" + data.getClientProtocolVersion() + ")");
-        sender.sendMessage(ChatColor.GRAY + "  Total VL: " + ChatColor.WHITE +
-                String.format("%.1f", data.getViolations().values().stream()
-                        .mapToDouble(Double::doubleValue).sum()));
+        // Console senders can't receive in-game watch messages — push to global debug instead
+        if (!(sender instanceof Player)) {
+            boolean now = plugin.getAlertManager().toggleGlobalDebugMode();
+            sender.sendMessage(PREFIX + (now ? ChatColor.GREEN + "Global debug mode ENABLED." : ChatColor.RED + "Global debug mode DISABLED."));
+            return;
+        }
+
+        Player watcher = (Player) sender;
+        boolean nowWatching = plugin.getAlertManager().toggleWatch(watcher.getUniqueId(), target.getUniqueId());
+
+        if (nowWatching) {
+            sender.sendMessage(PREFIX + ChatColor.GREEN + "Now watching " + ChatColor.WHITE + target.getName()
+                    + ChatColor.GREEN + ". All their flag events will appear here.");
+            sender.sendMessage(ChatColor.GRAY + "  Pos: " + ChatColor.WHITE
+                    + String.format("%.2f, %.2f, %.2f", data.getX(), data.getY(), data.getZ()));
+            sender.sendMessage(ChatColor.GRAY + "  OnGround: " + ChatColor.WHITE + data.isOnGround()
+                    + ChatColor.GRAY + "  AirTicks: " + ChatColor.WHITE + data.getAirTicks()
+                    + ChatColor.GRAY + "  Ping: " + ChatColor.WHITE + data.getPing() + "ms");
+            sender.sendMessage(ChatColor.GRAY + "  Sprinting: " + ChatColor.WHITE + data.isSprinting()
+                    + ChatColor.GRAY + "  Flying: " + ChatColor.WHITE + data.isFlying()
+                    + ChatColor.GRAY + "  Gliding: " + ChatColor.WHITE + data.isGliding());
+            sender.sendMessage(ChatColor.GRAY + "  dXZ: " + ChatColor.WHITE + String.format("%.4f", data.getDeltaXZ())
+                    + ChatColor.GRAY + "  dY: " + ChatColor.WHITE + String.format("%.4f", data.getDeltaY())
+                    + ChatColor.GRAY + "  dYaw: " + ChatColor.WHITE + String.format("%.3f", data.getDeltaYaw())
+                    + ChatColor.GRAY + "  dPitch: " + ChatColor.WHITE + String.format("%.3f", data.getDeltaPitch()));
+            double totalVL = data.getViolations().values().stream().mapToDouble(Double::doubleValue).sum();
+            sender.sendMessage(ChatColor.GRAY + "  Total VL: " + ChatColor.WHITE + String.format("%.1f", totalVL));
+        } else {
+            sender.sendMessage(PREFIX + ChatColor.RED + "Stopped watching " + target.getName() + ".");
+        }
     }
 
     private void handleViolations(CommandSender sender, String[] args) {

@@ -55,11 +55,17 @@ public abstract class Check {
             plugin.getViolationManager().flag(player, this, debugInfo);
         }
 
-        // Debug output
-        if (data.isDebugMode()) {
-            plugin.getAlertManager().sendDebugMessage(player,
-                    getFullCheckName() + " | VL: " + String.format("%.1f", vl) + " | " + debugInfo);
-        }
+        // Send to debug watchers (admins running /gaia debug <player>).
+        // Note: sendDebugToWatchers schedules to main thread internally — safe from netty thread.
+        plugin.getAlertManager().sendDebugToWatchers(player,
+                getFullCheckName() + " VL=" + String.format("%.1f", vl) + " | " + debugInfo
+                + " | dXZ=" + String.format("%.4f", data.getDeltaXZ())
+                + " | dYaw=" + String.format("%.3f", data.getDeltaYaw())
+                + " | dPitch=" + String.format("%.3f", data.getDeltaPitch())
+                + " | onGround=" + data.isOnGround()
+                + " | airTicks=" + data.getAirTicks()
+                + " | flying=" + data.isFlying()
+                + " | ping=" + data.getPing() + "ms");
     }
 
     /**

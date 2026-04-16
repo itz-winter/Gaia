@@ -2,7 +2,7 @@ name: Gaia
 version: ${project.version}
 main: com.gaiaac.gaia.core.GaiaPlugin
 api-version: "1.21"
-description: Packet-level Minecraft anticheat
+description: Packet-level Minecraft anticheat (supports 1.8 - 26.1.2+)
 authors: [GaiaTeam]
 depend: [packetevents]
 softdepend: [QoLPlugin]
@@ -10,7 +10,7 @@ softdepend: [QoLPlugin]
 commands:
   gaia:
     description: Gaia anticheat command
-    usage: /gaia <debug|violations|reload|alerts|info>
+    usage: /gaia <debug [player]|violations|reload|alerts|info>
     permission: gaia.admin
 
 permissions:

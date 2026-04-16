@@ -32,6 +32,10 @@ public class ConfigManager {
     private int decayIntervalSeconds;
     private double decayAmount;
 
+    // Debug
+    private boolean debugMode;
+    private boolean verboseDebug;
+
     public ConfigManager(GaiaPlugin plugin) {
         this.plugin = plugin;
         plugin.saveDefaultConfig();
@@ -59,6 +63,10 @@ public class ConfigManager {
         // General settings
         decayIntervalSeconds = config.getInt("general.decay-interval", 300);
         decayAmount = config.getDouble("general.decay-amount", 1.0);
+
+        // Debug settings
+        debugMode = config.getBoolean("debug.enabled", false);
+        verboseDebug = config.getBoolean("debug.verbose", false);
 
         // Load per-check settings
         if (plugin.getCheckManager() != null) {
@@ -89,6 +97,8 @@ public class ConfigManager {
     public String getPunishmentCommand() { return punishmentCommand; }
     public int getDecayIntervalSeconds() { return decayIntervalSeconds; }
     public double getDecayAmount() { return decayAmount; }
+    public boolean isDebugMode() { return debugMode; }
+    public boolean isVerboseDebug() { return verboseDebug; }
     public FileConfiguration getConfig() { return config; }
 
     /**
