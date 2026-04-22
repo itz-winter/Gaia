@@ -8,6 +8,13 @@ public class BadPacketsI extends Check {
     public BadPacketsI(GaiaPlugin plugin) { super(plugin, "BadPackets", "I", "badpackets", true, 5); }
     @Override public void handle(Player player, PlayerData data) {
         if (!data.isSprinting() || data.getDeltaXZ() < 0.1) return;
+        // Sprint-backwards is only physically meaningful on the ground. While airborne, sprint
+        // momentum carries the player forward even if they steer their yaw sideways — this produces
+        // false angle divergence that isn't actually impossible movement.
+        if (!data.isOnGround()) return;
+        // Block interactions (chests, doors, crafting tables) cause the player to turn their view
+        // while strafing — this generates false sprinting-backwards patterns for 500ms
+        if (System.currentTimeMillis() - data.getLastInteractionTime() < 500) return;
         double moveAngle = Math.toDegrees(Math.atan2(-data.getDeltaX(), data.getDeltaZ()));
         double yaw = data.getYaw();
         double diff = Math.abs(((yaw - moveAngle) % 360 + 540) % 360 - 180);

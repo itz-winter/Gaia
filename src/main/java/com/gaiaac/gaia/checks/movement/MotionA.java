@@ -14,7 +14,11 @@ public class MotionA extends Check {
     @Override
     public void handle(Player player, PlayerData data) {
         if (recentlyTeleported(data) || data.isFlying() || data.isInVehicle()
-                || recentlyReceivedVelocity(data) || data.isOnIce() || data.isOnSlime()) return;
+                || recentlyReceivedVelocity(data) || data.isOnIce() || data.isOnSlime()
+                || data.isInWater() || data.isInLava()) return;
+        // Soul Speed enchantment increases acceleration on soul sand/soil beyond normal limits
+        if (data.isOnSoulBlock()) return;
+        if (data.isRiptiding()) return;
 
         double dXZ = data.getDeltaXZ();
         double lastDXZ = data.getLastDeltaXZ();

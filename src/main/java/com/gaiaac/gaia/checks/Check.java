@@ -111,6 +111,16 @@ public abstract class Check {
         return System.currentTimeMillis() - data.getJoinTime() < 3000;
     }
 
+    /**
+     * Check if the player is a Bedrock player connected via Geyser.
+     * Geyser sets the client brand to a value containing "Geyser".
+     * Bedrock players have fundamentally different movement and placement mechanics.
+     */
+    protected boolean isBedrockPlayer(PlayerData data) {
+        String brand = data.getClientBrand();
+        return brand != null && brand.toLowerCase().contains("geyser");
+    }
+
     public String getCheckName() { return checkName; }
     public String getType() { return type; }
     public String getCheckCategory() { return checkCategory; }

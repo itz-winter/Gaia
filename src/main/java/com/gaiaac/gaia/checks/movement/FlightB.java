@@ -13,6 +13,7 @@ public class FlightB extends Check {
     public void handle(Player player, PlayerData data) {
         if (recentlyTeleported(data) || data.isFlying() || data.isGliding() || data.isInVehicle()
                 || data.isInWater() || data.isInLava() || data.isOnClimbable() || recentlyReceivedVelocity(data)) return;
+        if (data.hasLevitation() || data.hasSlowFalling() || data.isRiptiding() || data.isInBubbleColumn()) return;
 
         if (Math.abs(data.getDeltaY()) < 0.005 && data.getAirTicks() > 15 && !data.isOnGround()) {
             double buffer = data.addBuffer("flight_b_buffer", 1);

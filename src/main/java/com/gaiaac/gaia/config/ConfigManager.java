@@ -31,6 +31,8 @@ public class ConfigManager {
     // General
     private int decayIntervalSeconds;
     private double decayAmount;
+    private boolean decayAll;     // true when decay-amount is "all"
+    private String decayMessage;
 
     // Debug
     private boolean debugMode;
@@ -62,7 +64,21 @@ public class ConfigManager {
 
         // General settings
         decayIntervalSeconds = config.getInt("general.decay-interval", 300);
-        decayAmount = config.getDouble("general.decay-amount", 1.0);
+        // decay-amount can be a number OR the special string "all" to wipe all VL at once
+        String rawDecayAmount = config.getString("general.decay-amount", "1.0");
+        if ("all".equalsIgnoreCase(rawDecayAmount.trim())) {
+            decayAll = true;
+            decayAmount = Double.MAX_VALUE; // used as sentinel; decayAll flag is the real toggle
+        } else {
+            decayAll = false;
+            try {
+                decayAmount = Double.parseDouble(rawDecayAmount.trim());
+            } catch (NumberFormatException e) {
+                decayAmount = 1.0;
+                plugin.getLogger().warning("Invalid decay-amount value '" + rawDecayAmount + "' in config.yml — using 1.0");
+            }
+        }
+        decayMessage = config.getString("general.decay-message", "");
 
         // Debug settings
         debugMode = config.getBoolean("debug.enabled", false);
@@ -97,6 +113,8 @@ public class ConfigManager {
     public String getPunishmentCommand() { return punishmentCommand; }
     public int getDecayIntervalSeconds() { return decayIntervalSeconds; }
     public double getDecayAmount() { return decayAmount; }
+    public boolean isDecayAll() { return decayAll; }
+    public String getDecayMessage() { return decayMessage; }
     public boolean isDebugMode() { return debugMode; }
     public boolean isVerboseDebug() { return verboseDebug; }
     public FileConfiguration getConfig() { return config; }

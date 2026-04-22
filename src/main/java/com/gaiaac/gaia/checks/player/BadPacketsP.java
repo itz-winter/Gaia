@@ -8,7 +8,9 @@ public class BadPacketsP extends Check {
     public BadPacketsP(GaiaPlugin plugin) { super(plugin, "BadPackets", "P", "badpackets", true, 5); }
     @Override public void handle(Player player, PlayerData data) {
         long now = System.currentTimeMillis();
-        if (now - data.getLastAttackTime() < 50 && now - data.getLastBlockPlaceTime() < 50) {
+        // Use lastActualBlockPlaceTime (confirmed BlockPlaceEvent) not lastBlockPlaceTime (any right-click).
+        // Using lastBlockPlaceTime caused FPs when interacting with containers then attacking.
+        if (now - data.getLastAttackTime() < 50 && now - data.getLastActualBlockPlaceTime() < 50) {
             double buffer = data.addBuffer("bp_p_buffer", 1);
             if (buffer > 5) { flag(player, data, "simultaneousAction"); data.setBuffer("bp_p_buffer", 0); }
         } else { data.decreaseBuffer("bp_p_buffer", 0.5); }

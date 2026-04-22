@@ -8,9 +8,12 @@ public class StepA extends Check {
     public StepA(GaiaPlugin plugin) { super(plugin, "Step", "A", "step", true, 8); }
     @Override
     public void handle(Player player, PlayerData data) {
-        if (recentlyTeleported(data) || data.isFlying() || data.isInVehicle() || recentlyReceivedVelocity(data)) return;
-        if (data.isOnGround() && data.wasOnGround() && data.getDeltaY() > 0.6) {
-            flag(player, data, 2.0, "stepHeight=" + String.format("%.4f", data.getDeltaY()));
+        if (recentlyTeleported(data) || recentlyJoined(data) || data.isFlying() || data.isGliding() || data.isWearingElytra() || data.isInVehicle() || recentlyReceivedVelocity(data)) return;
+        // Sanity check: skip if horizontal movement is absurd (position correction / chunk load teleport)
+        if (data.getDeltaXZ() > 2.0) return;
+        if (data.isOnGround() && data.wasOnGround() && data.getDeltaY() > data.getStepHeightAttribute() + 0.01) {
+            flag(player, data, 2.0, "stepHeight=" + String.format("%.4f", data.getDeltaY())
+                    + " maxStep=" + String.format("%.2f", data.getStepHeightAttribute()));
         }
     }
 }

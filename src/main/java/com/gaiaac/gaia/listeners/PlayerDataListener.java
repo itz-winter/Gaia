@@ -11,10 +11,15 @@ import org.bukkit.event.player.PlayerGameModeChangeEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerTeleportEvent;
+import org.bukkit.event.player.PlayerRespawnEvent;
+import org.bukkit.event.player.PlayerBedEnterEvent;
+import org.bukkit.event.player.PlayerBedLeaveEvent;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.player.PlayerToggleSprintEvent;
 import org.bukkit.event.player.PlayerToggleSneakEvent;
 import org.bukkit.event.player.PlayerToggleFlightEvent;
+import org.bukkit.event.block.BlockPlaceEvent;
+import org.bukkit.event.entity.EntityToggleGlideEvent;
 
 /**
  * Bukkit event listener for player state tracking.
@@ -78,6 +83,8 @@ public class PlayerDataListener implements Listener {
         PlayerData data = plugin.getPlayerDataManager().getPlayerData(event.getPlayer());
         if (data != null) {
             data.setSneaking(event.isSneaking());
+            // Track when sneaking STARTS — NoSlowB needs a grace period for deceleration
+            if (event.isSneaking()) data.setLastSneakToggleTime(System.currentTimeMillis());
         }
     }
 
@@ -86,6 +93,20 @@ public class PlayerDataListener implements Listener {
         PlayerData data = plugin.getPlayerDataManager().getPlayerData(event.getPlayer());
         if (data != null) {
             data.setFlying(event.isFlying());
+        }
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onToggleGlide(EntityToggleGlideEvent event) {
+        if (!(event.getEntity() instanceof Player)) return;
+        Player player = (Player) event.getEntity();
+        PlayerData data = plugin.getPlayerDataManager().getPlayerData(player);
+        if (data != null) {
+            data.setGliding(event.isGliding());
+            // Also update wearingElytra — if gliding starts, they definitely have elytra
+            if (event.isGliding()) {
+                data.setWearingElytra(true);
+            }
         }
     }
 
@@ -106,5 +127,39 @@ public class PlayerDataListener implements Listener {
         if (data != null) {
             data.setLastAttackTime(System.currentTimeMillis());
         }
+    }
+
+    // === Teleport-like events that do NOT fire PlayerTeleportEvent ===
+    // All set lastTeleportTime so VClip/movement checks don't flag the position jump.
+
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onRespawn(PlayerRespawnEvent event) {
+        PlayerData data = plugin.getPlayerDataManager().getPlayerData(event.getPlayer());
+        if (data != null) data.setLastTeleportTime(System.currentTimeMillis());
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onBedEnter(PlayerBedEnterEvent event) {
+        // Bed entry teleports the player to the bed block — does not fire PlayerTeleportEvent
+        PlayerData data = plugin.getPlayerDataManager().getPlayerData(event.getPlayer());
+        if (data != null) data.setLastTeleportTime(System.currentTimeMillis());
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onBedLeave(PlayerBedLeaveEvent event) {
+        // Waking up also repositions the player
+        PlayerData data = plugin.getPlayerDataManager().getPlayerData(event.getPlayer());
+        if (data != null) data.setLastTeleportTime(System.currentTimeMillis());
+    }
+
+    /**
+     * Track confirmed block placements (not just right-click interactions).
+     * PLAYER_BLOCK_PLACEMENT fires for any right-click on a block (chests, buttons, doors, etc.),
+     * so scaffold checks that analyse sustained movement must gate on actual placements only.
+     */
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onBlockPlace(BlockPlaceEvent event) {
+        PlayerData data = plugin.getPlayerDataManager().getPlayerData(event.getPlayer());
+        if (data != null) data.setLastActualBlockPlaceTime(System.currentTimeMillis());
     }
 }

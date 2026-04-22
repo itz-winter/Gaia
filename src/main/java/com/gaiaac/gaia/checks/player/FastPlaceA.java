@@ -9,7 +9,9 @@ public class FastPlaceA extends Check {
     @Override
     public void handle(Player player, PlayerData data) {
         long now = System.currentTimeMillis();
-        long lastPlace = data.getLastBlockPlaceTime();
+        // Use lastActualBlockPlaceTime (confirmed by BlockPlaceEvent) so that right-clicking containers,
+        // doors, or other interactive blocks doesn't count as a "placement" and cause false positives.
+        long lastPlace = data.getLastActualBlockPlaceTime();
         if (lastPlace > 0) {
             long interval = now - lastPlace;
             // Less than 2 ticks (100ms) between placements — normal bridging is ~150ms+

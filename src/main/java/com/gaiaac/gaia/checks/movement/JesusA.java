@@ -11,6 +11,7 @@ public class JesusA extends Check {
     @Override
     public void handle(Player player, PlayerData data) {
         if (recentlyTeleported(data) || data.isFlying() || data.isInVehicle() || data.isGliding()) return;
+        if (data.isInBubbleColumn()) return; // Bubble column sets onGround=true while in water — FP
         if (data.isInWater() && data.isOnGround() && data.getDeltaY() >= 0 && data.getDeltaXZ() > 0.1) {
             double buffer = data.addBuffer("jesus_a_buffer", 1);
             if (buffer > 4) {

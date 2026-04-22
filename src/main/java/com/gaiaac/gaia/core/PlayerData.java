@@ -1,5 +1,6 @@
 package com.gaiaac.gaia.core;
 
+import com.gaiaac.gaia.util.math.PredictionEngine;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
@@ -17,6 +18,17 @@ public class PlayerData {
     private volatile int speedAmplifier = -1; // -1 means no effect
     private volatile int jumpBoostAmplifier = -1;
     private volatile boolean hasLevitation = false;
+    private volatile boolean hasSlowFalling = false;
+    private volatile boolean wearingElytra = false; // true if elytra is equipped in chest slot
+    private volatile boolean ridingJumpableVehicle = false; // true if riding a horse/camel (can jump)
+
+    // Cached player attribute values — updated from main thread, read from netty thread
+    // Using getAttribute().getValue() captures ALL modifiers: potions, commands, plugin modifications, etc.
+    private volatile double movementSpeedAttribute = 0.1;   // Attribute.MOVEMENT_SPEED          default: 0.1
+    private volatile double jumpStrengthAttribute  = 0.42;  // Attribute.JUMP_STRENGTH            default: 0.42
+    private volatile double gravityAttribute       = 0.08;  // Attribute.GRAVITY                  default: 0.08
+    private volatile double sneakingSpeedAttribute = 0.3;   // Attribute.SNEAKING_SPEED           default: 0.3 (Swift Sneak III → 0.75)
+    private volatile double stepHeightAttribute    = 0.6;   // Attribute.STEP_HEIGHT              default: 0.6
 
     // Position tracking
     private double x, y, z;
@@ -42,10 +54,18 @@ public class PlayerData {
     private boolean onClimbable;
     private boolean onIce;
     private boolean onSlime;
+    private volatile boolean inBubbleColumn;  // in BUBBLE_COLUMN block — propels player up/down
+    private volatile boolean isRiptiding;     // using Riptide trident — launches player at high speed
+    private volatile boolean onSoulBlock;     // on SOUL_SAND or SOUL_SOIL — Soul Speed enchant affects speed
+    private volatile boolean onHoneyBlock;    // on HONEY_BLOCK — reduces movement speed + jump height
 
     // Combat tracking
     private long lastAttackTime;
     private long lastBlockPlaceTime;
+    private long lastActualBlockPlaceTime; // set by BlockPlaceEvent — confirmed actual placement (not just right-click interaction)
+    private float lastBlockPlaceYaw;   // yaw at last block placement (for scaffold rotation lock detection)
+    private float lastBlockPlacePitch; // pitch at last block placement
+    private int consecutiveAirPlacements; // how many consecutive placements while airborne
     private int clicksPerSecond;
     private final ArrayDeque<Long> clickTimestamps = new ArrayDeque<>(24);
     private UUID lastTargetUUID;
@@ -55,10 +75,23 @@ public class PlayerData {
     private long lastAttackTargetSwitchTime;
     private boolean isUsingItem;
     private long lastItemUseTime;
+    private long lastSneakToggleTime;    // time when sneaking started — grace for deceleration
+    private long lastInteractionTime;    // time of last USE_ITEM or PLAYER_BLOCK_PLACEMENT — aim FP guard
+    private volatile long lastExitWaterTime; // time when player left water — grace for leap/leap-out FPs
+    private volatile long lastEnterWaterTime; // time when player entered water — used to gate exit grace (prevents Jesus skim exploit)
+    private volatile long lastGlideStartTime; // time when player started gliding — grace for MotionB during elytra deployment
+    private volatile boolean isSleeping;     // true while player is sleeping in a bed
+    private float attackYaw;   // player's yaw at the moment they sent the last INTERACT_ENTITY attack packet
+    private float attackPitch; // player's pitch at the moment they sent the last INTERACT_ENTITY attack packet
 
     // Digging / block breaking
     private volatile int diggingAction = -1; // 0=START, 1=CANCEL, 2=FINISH, -1=none
+    private volatile boolean currentlyDigging = false; // true from START_DIGGING until FINISH/CANCEL
     private volatile org.bukkit.block.Block lastDigBlock;
+    // Target block coords for freecam-dig check (set immediately on netty thread from packet)
+    private volatile int lastDigTargetX;
+    private volatile int lastDigTargetY;
+    private volatile int lastDigTargetZ;
 
     // Timing
     private long joinTime;
@@ -98,7 +131,13 @@ public class PlayerData {
     private int iceTicks;
     private double lastDeltaXZ;
     private double lastDeltaY;
-    private double predictedY; // predicted Y from gravity simulation
+    private double predictedY; // predicted deltaY for current tick (chasing — used by FlightA)
+
+    // Physics prediction engine state (independent simulation — does NOT chase actual deltaY)
+    // See PredictionEngine.java for the full description of how this differs from predictedY.
+    private double simVY = 0.0;             // independent Y-velocity simulation
+    private boolean simYValid = false;      // true when simVY is ready for comparison
+    private double maxPredictedVXZ = Double.MAX_VALUE; // max allowed XZ speed for this tick
 
     // Cached permission — set once on join from main thread, read from netty thread
     private volatile boolean bypassed;
@@ -117,7 +156,8 @@ public class PlayerData {
         this.yaw = loc.getYaw();
         this.pitch = loc.getPitch();
         // Cache permissions on construction (always called from main thread)
-        this.bypassed = player.isOp() || player.hasPermission("gaia.bypass");
+        boolean explicitDeny = player.isPermissionSet("gaia.bypass") && !player.hasPermission("gaia.bypass");
+        this.bypassed = !explicitDeny && (player.isOp() || player.hasPermission("gaia.bypass"));
         this.hasAlertsPermission = player.hasPermission("gaia.alerts");
         this.gameMode = player.getGameMode();
     }
@@ -165,14 +205,17 @@ public class PlayerData {
         } else {
             airTicks++;
             groundTicks = 0;
-            // Gravity simulation: velocity = (lastVelocity - 0.08) * 0.98
+            // Chasing gravity prediction (used by FlightA):
+            // velocity = (lastVelocity - gravity) * drag
             if (airTicks == 1 && lastOnGround) {
-                // First airborne tick after jump
                 predictedY = (deltaY - 0.08) * 0.98;
             } else {
                 predictedY = (lastDeltaY - 0.08) * 0.98;
             }
         }
+
+        // Advance the independent physics simulation (PredictionA/B)
+        PredictionEngine.tick(this);
     }
 
     // === Violation Handling ===
@@ -313,6 +356,10 @@ public class PlayerData {
     public void setFlying(boolean flying) { this.flying = flying; }
     public boolean isGliding() { return gliding; }
     public void setGliding(boolean gliding) { this.gliding = gliding; }
+    public boolean isWearingElytra() { return wearingElytra; }
+    public void setWearingElytra(boolean wearingElytra) { this.wearingElytra = wearingElytra; }
+    public boolean isRidingJumpableVehicle() { return ridingJumpableVehicle; }
+    public void setRidingJumpableVehicle(boolean v) { this.ridingJumpableVehicle = v; }
     public boolean isInVehicle() { return inVehicle; }
     public void setInVehicle(boolean inVehicle) { this.inVehicle = inVehicle; }
     public boolean isInWater() { return inWater; }
@@ -325,15 +372,37 @@ public class PlayerData {
     public void setOnIce(boolean onIce) { this.onIce = onIce; }
     public boolean isOnSlime() { return onSlime; }
     public void setOnSlime(boolean onSlime) { this.onSlime = onSlime; }
+    public boolean isInBubbleColumn() { return inBubbleColumn; }
+    public void setInBubbleColumn(boolean v) { this.inBubbleColumn = v; }
+    public boolean isRiptiding() { return isRiptiding; }
+    public void setRiptiding(boolean v) { this.isRiptiding = v; }
+    public boolean isOnSoulBlock() { return onSoulBlock; }
+    public void setOnSoulBlock(boolean v) { this.onSoulBlock = v; }
+    public boolean isOnHoneyBlock() { return onHoneyBlock; }
+    public void setOnHoneyBlock(boolean v) { this.onHoneyBlock = v; }
 
     public long getLastAttackTime() { return lastAttackTime; }
     public void setLastAttackTime(long lastAttackTime) { this.lastAttackTime = lastAttackTime; }
     public long getLastBlockPlaceTime() { return lastBlockPlaceTime; }
     public void setLastBlockPlaceTime(long lastBlockPlaceTime) { this.lastBlockPlaceTime = lastBlockPlaceTime; }
+    public long getLastActualBlockPlaceTime() { return lastActualBlockPlaceTime; }
+    public void setLastActualBlockPlaceTime(long t) { this.lastActualBlockPlaceTime = t; }
+    public float getLastBlockPlaceYaw() { return lastBlockPlaceYaw; }
+    public void setLastBlockPlaceYaw(float yaw) { this.lastBlockPlaceYaw = yaw; }
+    public float getLastBlockPlacePitch() { return lastBlockPlacePitch; }
+    public void setLastBlockPlacePitch(float pitch) { this.lastBlockPlacePitch = pitch; }
+    public int getConsecutiveAirPlacements() { return consecutiveAirPlacements; }
+    public void setConsecutiveAirPlacements(int count) { this.consecutiveAirPlacements = count; }
     public int getDiggingAction() { return diggingAction; }
     public void setDiggingAction(int action) { this.diggingAction = action; }
+    public boolean isCurrentlyDigging() { return currentlyDigging; }
+    public void setCurrentlyDigging(boolean v) { this.currentlyDigging = v; }
     public org.bukkit.block.Block getLastDigBlock() { return lastDigBlock; }
     public void setLastDigBlock(org.bukkit.block.Block block) { this.lastDigBlock = block; }
+    public int getLastDigTargetX() { return lastDigTargetX; }
+    public int getLastDigTargetY() { return lastDigTargetY; }
+    public int getLastDigTargetZ() { return lastDigTargetZ; }
+    public void setLastDigTarget(int x, int y, int z) { this.lastDigTargetX = x; this.lastDigTargetY = y; this.lastDigTargetZ = z; }
     public int getClicksPerSecond() { return clicksPerSecond; }
     public UUID getLastTargetUUID() { return lastTargetUUID; }
     public void setLastTargetUUID(UUID lastTargetUUID) { this.lastTargetUUID = lastTargetUUID; }
@@ -391,6 +460,14 @@ public class PlayerData {
     public double getLastDeltaY() { return lastDeltaY; }
     public double getPredictedY() { return predictedY; }
 
+    // === Prediction engine state (independent Y simulation + XZ max speed) ===
+    public double getSimVY() { return simVY; }
+    public void setSimVY(double v) { this.simVY = v; }
+    public boolean isSimYValid() { return simYValid; }
+    public void setSimYValid(boolean v) { this.simYValid = v; }
+    public double getMaxPredictedVXZ() { return maxPredictedVXZ; }
+    public void setMaxPredictedVXZ(double v) { this.maxPredictedVXZ = v; }
+
     public int getLastTargetEntityId() { return lastTargetEntityId; }
     public void setLastTargetEntityId(int id) { this.lastTargetEntityId = id; }
     public int getLastAttackTargetEntityId() { return lastAttackTargetEntityId; }
@@ -403,6 +480,22 @@ public class PlayerData {
     public void setUsingItem(boolean usingItem) { this.isUsingItem = usingItem; }
     public long getLastItemUseTime() { return lastItemUseTime; }
     public void setLastItemUseTime(long time) { this.lastItemUseTime = time; }
+    public long getLastSneakToggleTime() { return lastSneakToggleTime; }
+    public void setLastSneakToggleTime(long time) { this.lastSneakToggleTime = time; }
+    public long getLastInteractionTime() { return lastInteractionTime; }
+    public void setLastInteractionTime(long time) { this.lastInteractionTime = time; }
+    public long getLastExitWaterTime() { return lastExitWaterTime; }
+    public void setLastExitWaterTime(long time) { this.lastExitWaterTime = time; }
+    public long getLastEnterWaterTime() { return lastEnterWaterTime; }
+    public void setLastEnterWaterTime(long time) { this.lastEnterWaterTime = time; }
+    public long getLastGlideStartTime() { return lastGlideStartTime; }
+    public void setLastGlideStartTime(long time) { this.lastGlideStartTime = time; }
+    public boolean isSleeping() { return isSleeping; }
+    public void setSleeping(boolean sleeping) { this.isSleeping = sleeping; }
+    public float getAttackYaw() { return attackYaw; }
+    public void setAttackYaw(float yaw) { this.attackYaw = yaw; }
+    public float getAttackPitch() { return attackPitch; }
+    public void setAttackPitch(float pitch) { this.attackPitch = pitch; }
 
     public boolean isBypassed() { return bypassed; }
     public void setBypassed(boolean bypassed) { this.bypassed = bypassed; }
@@ -423,4 +516,19 @@ public class PlayerData {
     public void setJumpBoostAmplifier(int amp) { this.jumpBoostAmplifier = amp; }
     public boolean hasLevitation() { return hasLevitation; }
     public void setHasLevitation(boolean has) { this.hasLevitation = has; }
+    public boolean hasSlowFalling() { return hasSlowFalling; }
+    public void setHasSlowFalling(boolean v) { this.hasSlowFalling = v; }
+
+    // === Cached Attribute Values (set from main thread, read from netty thread) ===
+    // getValue() returns the final computed value including ALL modifiers (potions, /attribute, plugins, etc.)
+    public double getMovementSpeedAttribute() { return movementSpeedAttribute; }
+    public void setMovementSpeedAttribute(double v) { this.movementSpeedAttribute = v; }
+    public double getJumpStrengthAttribute() { return jumpStrengthAttribute; }
+    public void setJumpStrengthAttribute(double v) { this.jumpStrengthAttribute = v; }
+    public double getGravityAttribute() { return gravityAttribute; }
+    public void setGravityAttribute(double v) { this.gravityAttribute = v; }
+    public double getSneakingSpeedAttribute() { return sneakingSpeedAttribute; }
+    public void setSneakingSpeedAttribute(double v) { this.sneakingSpeedAttribute = v; }
+    public double getStepHeightAttribute() { return stepHeightAttribute; }
+    public void setStepHeightAttribute(double v) { this.stepHeightAttribute = v; }
 }

@@ -12,6 +12,8 @@ public class MotionH extends Check {
     @Override
     public void handle(Player player, PlayerData data) {
         if (recentlyTeleported(data) || recentlyJoined(data) || data.isInVehicle()) return;
+        if (recentlyReceivedVelocity(data) || data.isRiptiding() || data.isInBubbleColumn()) return;
+        if (data.isOnSlime()) return; // Slime block bounce can produce large dY while onGround flickers
 
         if (data.isOnGround() && Math.abs(data.getDeltaY()) > 0.6) {
             double buffer = data.addBuffer("motion_h_buffer", 1);

@@ -25,7 +25,7 @@ public class ReachA extends Check {
         if (recentlyTeleported(data) || recentlyReceivedVelocity(data)) return;
 
         long now = System.currentTimeMillis();
-        if (now - data.getLastAttackTime() > 100) return;
+        if (now - data.getLastAttackTime() > 200) return; // Increased from 100ms — scheduled tasks can arrive late
 
         int targetEntityId = data.getLastTargetEntityId();
         if (targetEntityId == -1) return;

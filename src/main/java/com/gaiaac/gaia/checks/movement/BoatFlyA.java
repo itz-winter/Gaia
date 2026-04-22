@@ -12,6 +12,8 @@ public class BoatFlyA extends Check {
     @Override
     public void handle(Player player, PlayerData data) {
         if (!data.isInVehicle() || recentlyTeleported(data)) return;
+        // Skip for horses/camels — they have a natural jump that can exceed 0.5 dY
+        if (data.isRidingJumpableVehicle()) return;
         if (data.getDeltaY() > 0.5 && !data.isInWater()) {
             flag(player, data, 2.0, "boatAscend dY=" + String.format("%.4f", data.getDeltaY()));
         }

@@ -80,21 +80,22 @@ public class GaiaPlugin extends JavaPlugin {
             violationManager.decayAllViolations();
         }, 20L * decayInterval, 20L * decayInterval);
 
-        // Schedule potion effect caching task — runs every 4 ticks (200ms) on main thread
-        // This avoids calling Bukkit potion API from netty/async threads (like Grim/Vulcan pattern)
+        // Schedule potion effect + attribute caching task — runs every 4 ticks (200ms) on main thread
+        // Attributes (getValue()) capture ALL modifiers: potions, /attribute, plugin modifications, etc.
+        // This avoids calling Bukkit API from netty/async threads (like Grim/Vulcan pattern)
         Bukkit.getScheduler().runTaskTimer(this, () -> {
             for (PlayerData data : playerDataManager.getAllPlayerData().values()) {
                 org.bukkit.entity.Player p = data.getPlayer();
                 if (p == null || !p.isOnline()) continue;
                 try {
-                    // Cache speed effect
+                    // Cache speed effect (still used by some combat checks)
                     if (p.hasPotionEffect(org.bukkit.potion.PotionEffectType.SPEED)) {
                         org.bukkit.potion.PotionEffect eff = p.getPotionEffect(org.bukkit.potion.PotionEffectType.SPEED);
                         data.setSpeedAmplifier(eff != null ? eff.getAmplifier() : -1);
                     } else {
                         data.setSpeedAmplifier(-1);
                     }
-                    // Cache jump boost effect
+                    // Cache jump boost effect (still used by some checks as fallback)
                     if (p.hasPotionEffect(org.bukkit.potion.PotionEffectType.JUMP_BOOST)) {
                         org.bukkit.potion.PotionEffect eff = p.getPotionEffect(org.bukkit.potion.PotionEffectType.JUMP_BOOST);
                         data.setJumpBoostAmplifier(eff != null ? eff.getAmplifier() : -1);
@@ -103,8 +104,92 @@ public class GaiaPlugin extends JavaPlugin {
                     }
                     // Cache levitation effect
                     data.setHasLevitation(p.hasPotionEffect(org.bukkit.potion.PotionEffectType.LEVITATION));
-                    // Also refresh permissions periodically (player may gain/lose perms)
-                    data.setBypassed(p.isOp() || p.hasPermission("gaia.bypass"));
+                    data.setHasSlowFalling(p.hasPotionEffect(org.bukkit.potion.PotionEffectType.SLOW_FALLING));
+                    // Cache elytra wearing state — true if gliding OR elytra equipped in chest slot
+                    // (setGliding is called later alongside lastGlideStartTime tracking)
+                    org.bukkit.inventory.ItemStack chest = p.getInventory().getChestplate();
+                    data.setWearingElytra(p.isGliding() ||
+                            (chest != null && chest.getType() == org.bukkit.Material.ELYTRA));
+                    // Cache riding-jumpable-vehicle state — horses/camels can jump, boats/minecarts cannot.
+                    // Used to prevent BoatFly/EntityFlight false positives on legitimate horse jumps.
+                    org.bukkit.entity.Entity vehicle = p.getVehicle();
+                    data.setRidingJumpableVehicle(vehicle instanceof org.bukkit.entity.AbstractHorse
+                            || vehicle instanceof org.bukkit.entity.Camel);
+                    // Cache player attributes — getValue() returns the final value with ALL modifiers applied
+                    // (potions, /attribute command, datapack effects, plugin modifications)
+                    // Note: In Spigot 1.21.3+, Attribute was refactored from an enum to a typed interface;
+                    // the GENERIC_/PLAYER_ prefixes were dropped (GENERIC_MOVEMENT_SPEED → MOVEMENT_SPEED, etc.)
+                    org.bukkit.attribute.AttributeInstance moveSpeed = p.getAttribute(org.bukkit.attribute.Attribute.MOVEMENT_SPEED);
+                    if (moveSpeed != null) data.setMovementSpeedAttribute(moveSpeed.getValue());
+                    // JUMP_STRENGTH and GRAVITY were added in MC 1.21 — use try/catch for safety on older builds
+                    try {
+                        org.bukkit.attribute.AttributeInstance jumpStrength = p.getAttribute(org.bukkit.attribute.Attribute.JUMP_STRENGTH);
+                        if (jumpStrength != null) data.setJumpStrengthAttribute(jumpStrength.getValue());
+                    } catch (NoSuchFieldError | Exception ignored) { /* pre-1.21 server */ }
+                    try {
+                        org.bukkit.attribute.AttributeInstance gravity = p.getAttribute(org.bukkit.attribute.Attribute.GRAVITY);
+                        if (gravity != null) data.setGravityAttribute(gravity.getValue());
+                    } catch (NoSuchFieldError | Exception ignored) { /* pre-1.21 server */ }
+                    // SNEAKING_SPEED — includes Swift Sneak enchantment (default 0.3, Swift Sneak III → 0.75)
+                    try {
+                        org.bukkit.attribute.AttributeInstance sneakSpeed = p.getAttribute(org.bukkit.attribute.Attribute.SNEAKING_SPEED);
+                        if (sneakSpeed != null) data.setSneakingSpeedAttribute(sneakSpeed.getValue());
+                    } catch (NoSuchFieldError | Exception ignored) { /* pre-1.21 server */ }
+                    // STEP_HEIGHT — the block height a player can walk over (default 0.6, plugins/mods can change)
+                    try {
+                        org.bukkit.attribute.AttributeInstance stepHeight = p.getAttribute(org.bukkit.attribute.Attribute.STEP_HEIGHT);
+                        if (stepHeight != null) data.setStepHeightAttribute(stepHeight.getValue());
+                    } catch (NoSuchFieldError | Exception ignored) { /* pre-1.21 server */ }
+                    // Cache environment/block states (all Bukkit world API — main thread only)
+                    boolean wasInWater = data.isInWater();
+                    boolean wasGliding = data.isGliding();
+                    data.setInWater(p.isInWater());
+                    // Water entry: track when player entered water (used to gate exit grace below)
+                    if (!wasInWater && data.isInWater()) {
+                        data.setLastEnterWaterTime(System.currentTimeMillis());
+                    }
+                    // Detect water→air transition for leap-out grace (JesusD/E, Flight FP prevention).
+                    // ONLY grant exit grace if the player was submerged for >1500ms — prevents Jesus
+                    // hack users from exploiting the grace by briefly skimming the water surface.
+                    if (wasInWater && !data.isInWater()) {
+                        long submergedDuration = System.currentTimeMillis() - data.getLastEnterWaterTime();
+                        if (submergedDuration > 1500) {
+                            data.setLastExitWaterTime(System.currentTimeMillis());
+                        }
+                    }
+                    // Elytra glide start: grace period for MotionB during initial elytra deployment
+                    data.setGliding(p.isGliding());
+                    if (!wasGliding && data.isGliding()) {
+                        data.setLastGlideStartTime(System.currentTimeMillis());
+                    }
+                    // Cache sleeping state — aim checks must skip while player is in bed
+                    data.setSleeping(p.isSleeping());
+                    data.setSwimming(p.isSwimming());
+                    // Lava: check the block occupying the player's body (eye location for head-in-lava)
+                    org.bukkit.block.Block bodyBlock = p.getLocation().getBlock();
+                    data.setInLava(bodyBlock.getType() == org.bukkit.Material.LAVA);
+                    // Climbable: use Bukkit's CLIMBABLE tag (ladders, vines, scaffolding, etc.)
+                    data.setOnClimbable(org.bukkit.Tag.CLIMBABLE.isTagged(bodyBlock.getType()));
+                    // Ice/Slime: check the block directly below the player
+                    org.bukkit.block.Block below = p.getLocation().subtract(0, 0.1, 0).getBlock();
+                    org.bukkit.Material belowType = below.getType();
+                    data.setOnIce(belowType == org.bukkit.Material.ICE
+                            || belowType == org.bukkit.Material.PACKED_ICE
+                            || belowType == org.bukkit.Material.BLUE_ICE
+                            || belowType == org.bukkit.Material.FROSTED_ICE);
+                    data.setOnSlime(belowType == org.bukkit.Material.SLIME_BLOCK);
+                    // Honey block: reduces movement speed and jump height
+                    data.setOnHoneyBlock(belowType == org.bukkit.Material.HONEY_BLOCK);
+                    // Soul block: Soul Speed enchantment increases speed on soul sand/soul soil
+                    data.setOnSoulBlock(belowType == org.bukkit.Material.SOUL_SAND
+                            || belowType == org.bukkit.Material.SOUL_SOIL);
+                    // Bubble column: propels player up/down rapidly — must exempt from flight/motion checks
+                    data.setInBubbleColumn(bodyBlock.getType() == org.bukkit.Material.BUBBLE_COLUMN);
+                    // Riptide: trident launches player at high speed through rain/water
+                    data.setRiptiding(p.isRiptiding());
+                    // Refresh permissions periodically (player may gain/lose perms via LP, etc.)
+                    boolean explicitDeny = p.isPermissionSet("gaia.bypass") && !p.hasPermission("gaia.bypass");
+                    data.setBypassed(!explicitDeny && (p.isOp() || p.hasPermission("gaia.bypass")));
                     data.setAlertsPermission(p.hasPermission("gaia.alerts"));
                 } catch (Exception ignored) {}
             }

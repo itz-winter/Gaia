@@ -18,7 +18,7 @@ public class TimerD extends Check {
     @Override
     public void handle(Player player, PlayerData data) {
         if (recentlyTeleported(data) || recentlyJoined(data)) return;
-        if (data.isInVehicle() || isLowTPS()) return;
+        if (data.isInVehicle() || isLowTPS() || data.isWearingElytra()) return;
 
         // Don't check oscillation when standing still — idle flying packets have naturally high jitter
         if (data.getDeltaXZ() < 0.05) {

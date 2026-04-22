@@ -12,8 +12,13 @@ public class JesusD extends Check {
     @Override
     public void handle(Player player, PlayerData data) {
         if (recentlyTeleported(data) || recentlyJoined(data) || data.isInVehicle()) return;
+        if (data.isRiptiding() || recentlyReceivedVelocity(data)) return;
+        if (data.isInBubbleColumn()) return; // Bubble column propels player upward at high speed
+        if (System.currentTimeMillis() - data.getLastExitWaterTime() < 800) return; // Leaping out of water
 
-        if (data.isInWater() && data.getDeltaY() >= 0 && !data.isOnGround() && data.getDeltaXZ() > 0.3) {
+        // Vanilla sprint-swimming can reach ~0.39-0.50 dXZ; Dolphin's Grace can push it higher.
+        // Threshold of 0.55 excludes all legitimate swimming while still catching Jesus (walking ON water).
+        if (data.isInWater() && data.getDeltaY() >= 0 && !data.isOnGround() && data.getDeltaXZ() > 0.55) {
             double buffer = data.addBuffer("jesus_d_buffer", 1);
             if (buffer > 8) {
                 flag(player, data, "waterSpeed dXZ=" + String.format("%.3f", data.getDeltaXZ())

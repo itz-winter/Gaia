@@ -152,6 +152,9 @@ public class CheckManager {
         combatChecks.add(new VelocityB(plugin));
         combatChecks.add(new VelocityC(plugin));
         combatChecks.add(new VelocityD(plugin));
+
+        // FreecamDig (A) — detects block breaking while camera is decoupled from body
+        combatChecks.add(new FreecamDigA(plugin));
     }
 
     private void registerMovementChecks() {
@@ -263,6 +266,12 @@ public class CheckManager {
 
         // WallClimb (A)
         movementChecks.add(new WallClimbA(plugin));
+
+        // Prediction (A-B) — independent physics simulation checks
+        // PredictionA: Y-velocity diverges from simulated gravity curve (independent of actual deltaY)
+        // PredictionB: horizontal speed exceeds attribute-derived physics ceiling (complements SpeedA)
+        movementChecks.add(new PredictionA(plugin));
+        movementChecks.add(new PredictionB(plugin));
     }
 
     private void registerPlayerChecks() {

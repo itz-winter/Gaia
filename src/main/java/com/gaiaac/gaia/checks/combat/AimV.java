@@ -22,7 +22,7 @@ public class AimV extends Check {
             double gcd = com.gaiaac.gaia.util.math.MathUtil.gcd(deltaYaw, deltaPitch);
             if (gcd < 0.0001 && deltaYaw > 2.0f && deltaPitch > 1.0f) {
                 double buffer = data.addBuffer("aim_v_buffer", 1);
-                if (buffer > 20) {
+                if (buffer > 40) {
                     flag(player, data, "invalidGCD gcd=" + String.format("%.6f", gcd));
                     data.setBuffer("aim_v_buffer", 0);
                 }

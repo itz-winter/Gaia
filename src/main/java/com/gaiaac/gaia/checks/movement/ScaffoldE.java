@@ -7,8 +7,8 @@ import org.bukkit.entity.Player;
 public class ScaffoldE extends Check {
     public ScaffoldE(GaiaPlugin plugin) { super(plugin, "Scaffold", "E", "scaffold", true, 8); }
     @Override public void handle(Player player, PlayerData data) {
-        if (recentlyTeleported(data) || recentlyJoined(data)) return;
-        long timeSincePlace = System.currentTimeMillis() - data.getLastBlockPlaceTime();
+        if (recentlyTeleported(data) || recentlyJoined(data) || data.isFlying() || data.isInVehicle()) return;
+        long timeSincePlace = System.currentTimeMillis() - data.getLastActualBlockPlaceTime();
         if (timeSincePlace < 200 && data.getDeltaXZ() > 0.1) {
             float yaw = data.getYaw();
             double moveAngle = Math.toDegrees(Math.atan2(-data.getDeltaX(), data.getDeltaZ()));

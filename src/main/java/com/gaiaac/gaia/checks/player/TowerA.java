@@ -19,6 +19,7 @@ public class TowerA extends Check {
     public void handle(Player player, PlayerData data) {
         if (data.isFlying()) return;
         if (data.isInVehicle()) return;
+        if (data.isOnClimbable() || data.isInWater() || data.isInLava()) return;
         if (recentlyTeleported(data) || recentlyJoined(data)) return;
 
         double deltaY = data.getY() - data.getLastY();

@@ -5,8 +5,9 @@ import com.gaiaac.gaia.core.PlayerData;
 import org.bukkit.entity.Player;
 /** Scaffold (F) - Detects placement timing matching exactly one per tick. */
 public class ScaffoldF extends Check {
-    public ScaffoldF(GaiaPlugin plugin) { super(plugin, "Scaffold", "F", "scaffold", true, 8); }
+    public ScaffoldF(GaiaPlugin plugin) { super(plugin, "Scaffold", "F", "scaffoldtimed", true, 8); }
     @Override public void handle(Player player, PlayerData data) {
+        if (data.isFlying() || data.isInVehicle()) return;
         long now = System.currentTimeMillis();
         long timeSincePlace = now - data.getLastBlockPlaceTime();
         double lastInterval = data.getBuffer("scaffold_f_lastInterval");

@@ -59,9 +59,29 @@ public class ViolationManager {
     }
 
     public void decayAllViolations() {
+        boolean wipeAll = plugin.getConfigManager().isDecayAll();
         double decayAmount = plugin.getConfigManager().getDecayAmount();
         for (PlayerData data : plugin.getPlayerDataManager().getAllPlayerData().values()) {
-            data.decayViolations(decayAmount);
+            if (wipeAll) {
+                data.clearViolations();
+            } else {
+                data.decayViolations(decayAmount);
+            }
+        }
+
+        // Broadcast decay message to staff with gaia.alerts permission (if configured)
+        String rawMessage = plugin.getConfigManager().getDecayMessage();
+        if (rawMessage != null && !rawMessage.isEmpty()) {
+            String formatted = org.bukkit.ChatColor.translateAlternateColorCodes('&', rawMessage);
+            Bukkit.getScheduler().runTask(plugin, () -> {
+                for (org.bukkit.entity.Player staff : Bukkit.getOnlinePlayers()) {
+                    if (staff.hasPermission("gaia.alerts")) {
+                        staff.sendMessage(formatted);
+                    }
+                }
+                // Always log to console
+                plugin.getLogger().info(org.bukkit.ChatColor.stripColor(formatted));
+            });
         }
     }
 
@@ -79,7 +99,9 @@ public class ViolationManager {
 
         command = command.replace("{player}", player.getName())
                 .replace("{check}", check.getCheckName())
-                .replace("{vl}", String.format("%.1f", vl));
+                .replace("{type}", check.getType())
+                .replace("{vl}", String.format("%.1f", vl))
+                .replace("{threshold}", String.format("%.1f", check.getThreshold()));
 
         String finalCommand = command;
         Bukkit.getScheduler().runTask(plugin, () -> {

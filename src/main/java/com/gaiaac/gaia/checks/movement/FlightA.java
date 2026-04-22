@@ -18,14 +18,21 @@ public class FlightA extends Check {
     public void handle(Player player, PlayerData data) {
         if (recentlyTeleported(data) || data.isFlying() || data.isGliding() || data.isInVehicle()
                 || data.isInWater() || data.isInLava() || data.isOnClimbable() || recentlyReceivedVelocity(data)) return;
+        if (data.hasLevitation() || data.hasSlowFalling()) return;
+        if (data.isRiptiding() || data.isInBubbleColumn()) return;
 
         double dY = data.getDeltaY();
         int airTicks = data.getAirTicks();
 
         if (data.isOnGround() || airTicks < 2) return;
 
-        // Check 1: Ascending after initial jump phase (airTicks > 6 means no legitimate jump would still be going up)
-        if (dY > 0.1 && airTicks > 6) {
+        // Godbridge grace: player places a block at the edge and is briefly airborne (1-3 ticks)
+        // before stepping onto the newly placed block. This is a legitimate movement pattern.
+        if (airTicks <= 3 && System.currentTimeMillis() - data.getLastActualBlockPlaceTime() < 200) return;
+
+        // Check 1: Ascending after initial jump phase.
+        // Raised from > 6 to > 10: jump boost III/IV can keep dY positive until tick ~9.
+        if (dY > 0.1 && airTicks > 10) {
             double buffer = data.addBuffer("flight_a_buffer", 2);
             if (buffer > 4) {
                 flag(player, data, 3.0, "ascend dY=" + String.format("%.6f", dY) + " airTicks=" + airTicks);

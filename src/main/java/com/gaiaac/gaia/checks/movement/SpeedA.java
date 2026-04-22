@@ -7,35 +7,37 @@ import org.bukkit.entity.Player;
 /**
  * Speed (A) - Detects horizontal velocity exceeding physics limits.
  * Uses friction-based prediction: ground friction = 0.91 * 0.6 (slipperiness), air friction = 0.91
- * Base sprint speed on ground: ~0.2806 (sprinting), ~0.2158 (walking)
- * Max first-tick sprint: 0.36 (with proper momentum)
+ *
+ * Physics are scaled by the player's GENERIC_MOVEMENT_SPEED attribute value, which already
+ * includes ALL modifiers: speed potions, /attribute command, plugin modifications, etc.
+ * Default attribute value is 0.1 → max sprint momentum ≈ 0.36 blocks/tick.
  */
 public class SpeedA extends Check {
+    // Base physics constants at default movement speed (attribute = 0.1)
+    private static final double BASE_MOVEMENT_SPEED = 0.1;
+    private static final double BASE_MAX_GROUND_SPRINT = 0.36; // sprint with momentum at attr=0.1
+    private static final double BASE_AIR_ACCEL = 0.026;        // sprint air acceleration at attr=0.1
+
     public SpeedA(GaiaPlugin plugin) { super(plugin, "Speed", "A", "speed", true, 10); }
     @Override
     public void handle(Player player, PlayerData data) {
-        if (recentlyTeleported(data) || data.isFlying() || data.isInVehicle() || data.isGliding()
+        if (recentlyTeleported(data) || data.isFlying() || data.isInVehicle() || data.isGliding() || data.isWearingElytra()
                 || recentlyReceivedVelocity(data) || data.isInWater() || data.isInLava()) return;
+        if (data.isRiptiding()) return;
 
         double dXZ = data.getDeltaXZ();
         double lastDXZ = data.getLastDeltaXZ();
+        // Scale factor relative to the default attribute value — captures potions, /attribute, plugin boosts
+        double speedScale = data.getMovementSpeedAttribute() / BASE_MOVEMENT_SPEED;
 
         // === Ground speed check ===
         if (data.isOnGround()) {
-            double maxSpeed = 0.36; // Base sprint speed with momentum
+            double maxSpeed = BASE_MAX_GROUND_SPRINT * speedScale;
 
-            // Speed effect — use cached amplifier from PlayerData (set on main thread)
-            int speedAmp = data.getSpeedAmplifier();
-            if (speedAmp >= 0) {
-                maxSpeed += (speedAmp + 1) * 0.062;
-            }
+            // Ice is very slippery — allow extra momentum
+            if (data.isOnIce()) maxSpeed += 0.4;
 
-            // Soul speed / ice handling
-            if (data.isOnIce()) {
-                maxSpeed += 0.4; // Ice is very slippery
-            }
-
-            // Lag compensation: moderate
+            // Lag compensation
             maxSpeed += data.getPing() / 1000.0;
 
             if (dXZ > maxSpeed) {
@@ -50,15 +52,9 @@ public class SpeedA extends Check {
         }
         // === Air speed check ===
         else if (data.getAirTicks() > 1) {
-            // In air, friction = 0.91. Max air speed is previous speed * 0.91 + 0.026 (sprint) or 0.02 (walk)
-            double maxAirAccel = 0.026; // Sprint air acceleration
-            double expectedMax = lastDXZ * 0.91 + maxAirAccel;
-
-            // Speed effect boost — use cached amplifier from PlayerData (set on main thread)
-            int speedAmp = data.getSpeedAmplifier();
-            if (speedAmp >= 0) {
-                expectedMax += (speedAmp + 1) * 0.02;
-            }
+            // In air: friction = 0.91, air accel scales with movement speed attribute
+            double airAccel = BASE_AIR_ACCEL * speedScale;
+            double expectedMax = lastDXZ * 0.91 + airAccel;
 
             // Generous tolerance for lag
             expectedMax += 0.05 + (data.getPing() / 500.0);

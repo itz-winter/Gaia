@@ -12,8 +12,11 @@ public class JesusE extends Check {
     @Override
     public void handle(Player player, PlayerData data) {
         if (recentlyTeleported(data) || recentlyJoined(data) || data.isInVehicle()) return;
+        if (data.isRiptiding() || recentlyReceivedVelocity(data)) return;
+        if (data.isInBubbleColumn()) return; // Bubble column propels player upward
+        if (System.currentTimeMillis() - data.getLastExitWaterTime() < 800) return; // Leaping out of water
 
-        if ((data.isInWater() || data.isInLava()) && data.getDeltaY() > 0.42) {
+        if ((data.isInWater() || data.isInLava()) && data.getDeltaY() > data.getJumpStrengthAttribute() + 0.1) {
             double buffer = data.addBuffer("jesus_e_buffer", 1);
             if (buffer > 5) {
                 flag(player, data, "liquidJump dY=" + String.format("%.3f", data.getDeltaY()));

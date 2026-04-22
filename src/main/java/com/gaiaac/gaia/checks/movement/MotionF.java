@@ -11,8 +11,9 @@ public class MotionF extends Check {
 
     @Override
     public void handle(Player player, PlayerData data) {
-        if (recentlyTeleported(data) || recentlyJoined(data) || data.isGliding() || data.isInVehicle()) return;
-        if (recentlyReceivedVelocity(data)) return;
+        if (recentlyTeleported(data) || recentlyJoined(data) || data.isGliding() || data.isWearingElytra() || data.isInVehicle()) return;
+        if (recentlyReceivedVelocity(data) || data.isInWater() || data.isInLava() || data.isOnClimbable()) return;
+        if (data.hasLevitation() || data.hasSlowFalling() || data.isRiptiding() || data.isInBubbleColumn()) return;
 
         if (!data.isOnGround() && data.getAirTicks() > 5) {
             double deltaXZ = data.getDeltaXZ();

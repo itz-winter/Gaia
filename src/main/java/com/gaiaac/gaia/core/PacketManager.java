@@ -52,15 +52,26 @@ public class PacketManager implements PacketListener {
             data.handleMovement(wrapper.getPosition().getX(), wrapper.getPosition().getY(),
                     wrapper.getPosition().getZ(), wrapper.getYaw(), wrapper.getPitch(), wrapper.isOnGround());
             runChecks(cm.getMovementChecks(), player, data);
-            // Aim checks run on all rotation packets (detects freecam, nuker, etc. — not just combat aimbots)
-            runChecks(cm.getCombatChecksByCategory("aim"), player, data);
+            // Aim checks run on all rotation packets — skip for 300ms after any right-click interaction
+            // (players snap their view to look at what they're clicking, causing false aim patterns).
+            // Also skip while sleeping in bed (forced head rotation), in a bubble column (wild movement),
+            // or while actively falling (natural quick-looks while airborne are not aimbot behaviour).
+            boolean activelyFalling = data.getAirTicks() > 5 && data.getDeltaY() < -0.2;
+            if (System.currentTimeMillis() - data.getLastInteractionTime() > 300
+                    && !data.isSleeping() && !data.isInBubbleColumn() && !activelyFalling) {
+                runChecks(cm.getCombatChecksByCategory("aim"), player, data);
+            }
 
         } else if (event.getPacketType() == PacketType.Play.Client.PLAYER_ROTATION) {
             WrapperPlayClientPlayerRotation wrapper = new WrapperPlayClientPlayerRotation(event);
             data.handleMovement(data.getX(), data.getY(), data.getZ(),
                     wrapper.getYaw(), wrapper.getPitch(), wrapper.isOnGround());
-            // Aim checks run on all rotation packets (detects freecam, nuker, etc. — not just combat aimbots)
-            runChecks(cm.getCombatChecksByCategory("aim"), player, data);
+            // Aim checks run on all rotation packets — skip for 300ms after any right-click interaction
+            boolean activelyFalling2 = data.getAirTicks() > 5 && data.getDeltaY() < -0.2;
+            if (System.currentTimeMillis() - data.getLastInteractionTime() > 300
+                    && !data.isSleeping() && !data.isInBubbleColumn() && !activelyFalling2) {
+                runChecks(cm.getCombatChecksByCategory("aim"), player, data);
+            }
 
         } else if (event.getPacketType() == PacketType.Play.Client.PLAYER_FLYING) {
             WrapperPlayClientPlayerFlying wrapper = new WrapperPlayClientPlayerFlying(event);
@@ -79,6 +90,11 @@ public class PacketManager implements PacketListener {
                 int targetId = wrapper.getEntityId();
                 data.setLastAttackTime(now);
                 data.addClick();
+                // Capture rotation at attack time for FreecamAttack detection (AimH)
+                data.setAttackYaw(data.getYaw());
+                data.setAttackPitch(data.getPitch());
+                // Attacking in vanilla cancels item use (can't eat and attack simultaneously)
+                data.setUsingItem(false);
 
                 // Track multi-target attacks for KillAura detection
                 int lastId = data.getLastAttackTargetEntityId();
@@ -97,15 +113,36 @@ public class PacketManager implements PacketListener {
                 data.setLastTargetEntityId(targetId);
 
                 runChecks(cm.getCombatChecks(), player, data);
+            } else {
+                // INTERACT or INTERACT_AT (right-clicking a mob/villager/NPC): player often turns their
+                // head toward the entity they clicked — guard aim checks for 300ms to prevent FPs.
+                data.setLastInteractionTime(System.currentTimeMillis());
             }
 
         // === Block placement ===
         } else if (event.getPacketType() == PacketType.Play.Client.PLAYER_BLOCK_PLACEMENT) {
+            // Right-clicking a block cancels any active item use (eating, blocking, bow draw).
+            // Without this, USE_ITEM + PLAYER_BLOCK_PLACEMENT arriving together (right-click on block
+            // while holding food/bow) leaves isUsingItem=true and triggers NoSlowA FP.
+            data.setUsingItem(false);
+            // Any right-click interaction: guard aim checks for 300ms (players snap view to target)
+            data.setLastInteractionTime(System.currentTimeMillis());
             // Run checks BEFORE updating timestamp — checks need to compare against the PREVIOUS placement time
             runChecks(cm.getPlayerChecksByCategory("fastplace"), player, data);
-            runChecks(cm.getMovementChecksByCategory("scaffold"), player, data);
+            // Only run packet-timing scaffold checks (A/B/C/F) on block placement packets.
+            // Movement-based scaffold checks (E/G/H/I/J/K/L/M/N/O) run on movement packets only —
+            // running them here caused FPs when right-clicking within a recent placement window.
+            runChecks(cm.getMovementChecksByCategory("scaffoldtimed"), player, data);
             runChecks(cm.getPlayerChecksByCategory("airplace"), player, data);
             runChecks(cm.getPlayerChecksByCategory("tower"), player, data);
+            // Track placement rotation and consecutive airborne placements for ScaffoldB
+            if (!data.isOnGround()) {
+                data.setConsecutiveAirPlacements(data.getConsecutiveAirPlacements() + 1);
+            } else {
+                data.setConsecutiveAirPlacements(0);
+            }
+            data.setLastBlockPlaceYaw(data.getYaw());
+            data.setLastBlockPlacePitch(data.getPitch());
             data.setLastBlockPlaceTime(System.currentTimeMillis());
 
         // === Digging ===
@@ -119,20 +156,30 @@ public class PacketManager implements PacketListener {
             com.github.retrooper.packetevents.protocol.player.DiggingAction digAction = wrapper.getAction();
             if (digAction == com.github.retrooper.packetevents.protocol.player.DiggingAction.START_DIGGING) {
                 data.setDiggingAction(0);
+                data.setCurrentlyDigging(true);
                 // Look up the block on the main thread (Bukkit API not safe on netty thread)
                 final int bx = wrapper.getBlockPosition().getX();
                 final int by = wrapper.getBlockPosition().getY();
                 final int bz = wrapper.getBlockPosition().getZ();
+                // Save target block coords immediately (netty-safe) for FreecamDigA check
+                data.setLastDigTarget(bx, by, bz);
+                // Capture rotation at dig time for FreecamDig detection (AimI)
+                data.setAttackYaw(data.getYaw());
+                data.setAttackPitch(data.getPitch());
                 org.bukkit.Bukkit.getScheduler().runTask(plugin, () -> {
                     try {
                         org.bukkit.block.Block block = player.getWorld().getBlockAt(bx, by, bz);
                         data.setLastDigBlock(block);
                     } catch (Exception ignored) {}
                 });
+                // Run freecam-dig check (AimI) after capturing target + rotation
+                runChecks(cm.getCombatChecksByCategory("freecamdig"), player, data);
             } else if (digAction == com.github.retrooper.packetevents.protocol.player.DiggingAction.CANCELLED_DIGGING) {
                 data.setDiggingAction(1);
+                data.setCurrentlyDigging(false);
             } else if (digAction == com.github.retrooper.packetevents.protocol.player.DiggingAction.FINISHED_DIGGING) {
                 data.setDiggingAction(2);
+                data.setCurrentlyDigging(false);
             } else {
                 data.setDiggingAction(-1);
             }
@@ -145,8 +192,11 @@ public class PacketManager implements PacketListener {
         // === Use item ===
         } else if (event.getPacketType() == PacketType.Play.Client.USE_ITEM) {
             data.setUsingItem(true);
-            data.setLastItemUseTime(System.currentTimeMillis());
+            // Any right-click/use: guard aim checks for 300ms (players snap view to what they're using)
+            data.setLastInteractionTime(System.currentTimeMillis());
+            // Run checks BEFORE updating timestamp — FastUseA needs to compare against PREVIOUS use time
             runChecks(cm.getPlayerChecksByCategory("fastuse"), player, data);
+            data.setLastItemUseTime(System.currentTimeMillis());
         }
 
         // Timer checks run on all packets — but use pre-indexed list (only 4 checks, not full iteration)

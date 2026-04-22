@@ -7,8 +7,8 @@ import org.bukkit.entity.Player;
 public class ScaffoldJ extends Check {
     public ScaffoldJ(GaiaPlugin plugin) { super(plugin, "Scaffold", "J", "scaffold", true, 8); }
     @Override public void handle(Player player, PlayerData data) {
-        if (recentlyTeleported(data)) return;
-        long timeSincePlace = System.currentTimeMillis() - data.getLastBlockPlaceTime();
+        if (recentlyTeleported(data) || data.isFlying() || data.isInVehicle()) return;
+        long timeSincePlace = System.currentTimeMillis() - data.getLastActualBlockPlaceTime();
         if (timeSincePlace < 150) {
             float yaw = Math.abs(data.getYaw() % 90);
             if (yaw < 1.0f || yaw > 89.0f) {

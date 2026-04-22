@@ -9,7 +9,8 @@ public class WallClimbA extends Check {
     @Override
     public void handle(Player player, PlayerData data) {
         if (recentlyTeleported(data) || data.isFlying() || data.isInVehicle() || data.isOnClimbable()
-                || data.isInWater() || recentlyReceivedVelocity(data)) return;
+                || data.isInWater() || data.isInLava() || data.isSwimming() || recentlyReceivedVelocity(data)) return;
+        if (data.hasLevitation() || data.isRiptiding() || data.isInBubbleColumn()) return;
         // Ascending without being on climbable, not jumping (multiple ticks up)
         if (data.getDeltaY() > 0.1 && data.getAirTicks() > 5 && !data.isGliding()) {
             double buffer = data.addBuffer("wallclimb_a_buffer", 1);

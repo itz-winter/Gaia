@@ -46,11 +46,13 @@ public class AlertManager {
         }
         lastAlertTime.put(alertKey, now);
 
-        String message = PREFIX + ChatColor.RED + flaggedPlayer.getName()
-                + ChatColor.GRAY + " failed "
-                + ChatColor.GOLD + check.getCheckName() + " (" + check.getType() + ")"
-                + ChatColor.GRAY + " [" + ChatColor.RED + String.format("%.0f", vl)
-                + ChatColor.GRAY + "/" + ChatColor.GREEN + String.format("%.0f", threshold) + ChatColor.GRAY + "]";
+        String message = org.bukkit.ChatColor.translateAlternateColorCodes('&',
+                plugin.getConfigManager().getAlertFormat()
+                        .replace("{player}", flaggedPlayer.getName())
+                        .replace("{check}", check.getCheckName())
+                        .replace("{type}", check.getType())
+                        .replace("{vl}", String.format("%.0f", vl))
+                        .replace("{threshold}", String.format("%.0f", threshold)));
 
         // Console alert (logger is thread-safe)
         if (plugin.getConfigManager().isAlertsConsole()) {

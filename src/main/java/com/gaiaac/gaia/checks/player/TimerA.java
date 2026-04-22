@@ -30,7 +30,7 @@ public class TimerA extends Check {
     @Override
     public void handle(Player player, PlayerData data) {
         if (recentlyTeleported(data) || recentlyJoined(data)) return;
-        if (data.isInVehicle() || isLowTPS()) return;
+        if (data.isInVehicle() || isLowTPS() || data.isWearingElytra()) return;
 
         long now = System.nanoTime();
 

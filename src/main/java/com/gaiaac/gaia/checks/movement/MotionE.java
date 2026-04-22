@@ -11,13 +11,18 @@ public class MotionE extends Check {
 
     @Override
     public void handle(Player player, PlayerData data) {
-        if (recentlyTeleported(data) || recentlyJoined(data) || data.isGliding() || data.isInVehicle()) return;
+        if (recentlyTeleported(data) || recentlyJoined(data) || data.isGliding() || data.isWearingElytra() || data.isInVehicle()) return;
         if (recentlyReceivedVelocity(data)) return;
+        if (data.hasLevitation() || data.hasSlowFalling() || data.isRiptiding() || data.isInBubbleColumn()) return;
+        if (data.isInWater() || data.isInLava()) return;
 
         double deltaY = data.getDeltaY();
-        // Terminal velocity in Minecraft is about -3.92 blocks/tick for free fall
-        if (deltaY < -4.0) {
-            flag(player, data, "terminalVelocity dY=" + String.format("%.3f", deltaY));
+        // Terminal velocity = gravity / (1 - drag_factor). Default: 0.08 / 0.02 = 4.0 blocks/tick
+        // Using the cached GENERIC_GRAVITY attribute so modified gravity (/attribute, datapacks) is respected
+        double terminalVelocity = data.getGravityAttribute() / 0.02;
+        if (deltaY < -(terminalVelocity + 0.1)) { // small tolerance for floating point / lag
+            flag(player, data, "terminalVelocity dY=" + String.format("%.3f", deltaY)
+                    + " max=-" + String.format("%.3f", terminalVelocity));
         }
     }
 }

@@ -11,8 +11,9 @@ public class MotionG extends Check {
 
     @Override
     public void handle(Player player, PlayerData data) {
-        if (recentlyTeleported(data) || recentlyJoined(data) || data.isGliding() || data.isInVehicle()) return;
+        if (recentlyTeleported(data) || recentlyJoined(data) || data.isGliding() || data.isWearingElytra() || data.isInVehicle()) return;
         if (recentlyReceivedVelocity(data) || data.isOnClimbable() || data.isInWater() || data.isInLava()) return;
+        if (data.hasLevitation() || data.hasSlowFalling() || data.isRiptiding() || data.isInBubbleColumn()) return;
 
         if (!data.isOnGround() && data.getAirTicks() > 3) {
             double deltaY = data.getDeltaY();

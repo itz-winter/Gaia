@@ -24,9 +24,10 @@ public class GroundSpoofA extends Check {
         boolean clientOnGround = data.isOnGround();
         double deltaY = data.getDeltaY();
 
-        // Client claims on ground but Y is changing significantly (impossible if truly standing)
-        // On a flat surface, deltaY should be ~0. If falling/rising, deltaY is non-zero.
-        if (clientOnGround && Math.abs(deltaY) > 0.1) {
+        // Client claims on ground but is falling significantly — classic NoFall pattern.
+        // We only check negative deltaY (falling) here; positive deltaY (stepping up a block)
+        // is legitimate and must NOT be flagged — step height is 0.6 and onGround=true after step.
+        if (clientOnGround && deltaY < -0.1) {
             double buffer = data.addBuffer("groundspoof_a_buffer", 1);
             if (buffer > 3) {
                 flag(player, data, 2.0, String.format("deltaY=%.4f clientGround=true", deltaY));
