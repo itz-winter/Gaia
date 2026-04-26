@@ -7,7 +7,8 @@ import org.bukkit.entity.Player;
 public class BadPacketsQ extends Check {
     public BadPacketsQ(GaiaPlugin plugin) { super(plugin, "BadPackets", "Q", "badpackets", true, 3); }
     @Override public void handle(Player player, PlayerData data) {
-        if (player.isDead() && data.getDeltaXZ() > 0.1) {
+        // Use cached isDead — player.isDead() is Bukkit API and not safe on the netty thread
+        if (data.isDead() && data.getDeltaXZ() > 0.1) {
             flag(player, data, 5.0, "moveWhileDead dXZ=" + String.format("%.3f", data.getDeltaXZ()));
         }
     }

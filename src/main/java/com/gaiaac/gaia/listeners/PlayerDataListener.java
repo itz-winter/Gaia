@@ -20,6 +20,7 @@ import org.bukkit.event.player.PlayerToggleSneakEvent;
 import org.bukkit.event.player.PlayerToggleFlightEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.entity.EntityToggleGlideEvent;
+import org.bukkit.event.vehicle.VehicleExitEvent;
 
 /**
  * Bukkit event listener for player state tracking.
@@ -152,9 +153,24 @@ public class PlayerDataListener implements Listener {
         if (data != null) data.setLastTeleportTime(System.currentTimeMillis());
     }
 
+    // === Vehicle exit — set grace so BadPackets checks don't fire on GSit stand-up teleport ===
+
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onVehicleExit(VehicleExitEvent event) {
+        if (!(event.getExited() instanceof Player)) return;
+        Player player = (Player) event.getExited();
+        PlayerData data = plugin.getPlayerDataManager().getPlayerData(player);
+        if (data == null) return;
+        long now = System.currentTimeMillis();
+        // GSit (and similar plugins) teleport the player when they stand up from a seat.
+        // Set both lastVehicleExitTime (BadPackets rotation/position grace) and lastTeleportTime
+        // (VClip/movement checks) so the sudden pitch snap + position jump isn't flagged.
+        data.setLastVehicleExitTime(now);
+        data.setLastTeleportTime(now);
+    }
+
     /**
-     * Track confirmed block placements (not just right-click interactions).
-     * PLAYER_BLOCK_PLACEMENT fires for any right-click on a block (chests, buttons, doors, etc.),
+     * Track confirmed block placements (not just right-click interactions).     * PLAYER_BLOCK_PLACEMENT fires for any right-click on a block (chests, buttons, doors, etc.),
      * so scaffold checks that analyse sustained movement must gate on actual placements only.
      */
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)

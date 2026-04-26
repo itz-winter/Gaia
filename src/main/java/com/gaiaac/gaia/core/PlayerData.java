@@ -81,6 +81,9 @@ public class PlayerData {
     private volatile long lastEnterWaterTime; // time when player entered water — used to gate exit grace (prevents Jesus skim exploit)
     private volatile long lastGlideStartTime; // time when player started gliding — grace for MotionB during elytra deployment
     private volatile boolean isSleeping;     // true while player is sleeping in a bed
+    private volatile boolean isDead;         // cached from main thread — safe to read on netty thread (BadPacketsQ)
+    private volatile boolean handRaised;     // cached from main thread — safe to read on netty thread (BadPacketsK)
+    private volatile long lastVehicleExitTime; // time of last VehicleExitEvent — grace for GSit stand-up FPs
     private float attackYaw;   // player's yaw at the moment they sent the last INTERACT_ENTITY attack packet
     private float attackPitch; // player's pitch at the moment they sent the last INTERACT_ENTITY attack packet
 
@@ -492,6 +495,12 @@ public class PlayerData {
     public void setLastGlideStartTime(long time) { this.lastGlideStartTime = time; }
     public boolean isSleeping() { return isSleeping; }
     public void setSleeping(boolean sleeping) { this.isSleeping = sleeping; }
+    public boolean isDead() { return isDead; }
+    public void setDead(boolean dead) { this.isDead = dead; }
+    public boolean isHandRaised() { return handRaised; }
+    public void setHandRaised(boolean raised) { this.handRaised = raised; }
+    public long getLastVehicleExitTime() { return lastVehicleExitTime; }
+    public void setLastVehicleExitTime(long time) { this.lastVehicleExitTime = time; }
     public float getAttackYaw() { return attackYaw; }
     public void setAttackYaw(float yaw) { this.attackYaw = yaw; }
     public float getAttackPitch() { return attackPitch; }

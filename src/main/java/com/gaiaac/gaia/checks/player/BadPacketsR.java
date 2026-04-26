@@ -8,6 +8,8 @@ public class BadPacketsR extends Check {
     public BadPacketsR(GaiaPlugin plugin) { super(plugin, "BadPackets", "R", "badpackets", true, 3); }
     @Override public void handle(Player player, PlayerData data) {
         if (recentlyTeleported(data) || recentlyJoined(data)) return;
+        // GSit / plugin seats: player's pitch snaps ~90° when standing up — ignore for 1s after vehicle exit
+        if (System.currentTimeMillis() - data.getLastVehicleExitTime() < 1000) return;
         double totalRot = Math.sqrt(data.getDeltaYaw() * data.getDeltaYaw() + data.getDeltaPitch() * data.getDeltaPitch());
         if (totalRot > 300) {
             flag(player, data, 3.0, "extremeRotation total=" + String.format("%.1f", totalRot));

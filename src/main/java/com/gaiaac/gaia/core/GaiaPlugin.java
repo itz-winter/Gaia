@@ -165,6 +165,11 @@ public class GaiaPlugin extends JavaPlugin {
                     // Cache sleeping state — aim checks must skip while player is in bed
                     data.setSleeping(p.isSleeping());
                     data.setSwimming(p.isSwimming());
+                    // Cache dead/handRaised — Bukkit API; read from netty thread via data (thread-safe)
+                    data.setDead(p.isDead());
+                    data.setHandRaised(p.isHandRaised());
+                    // Cache vehicle state — isInsideVehicle() is Bukkit API (main thread only)
+                    data.setInVehicle(p.isInsideVehicle());
                     // Lava: check the block occupying the player's body (eye location for head-in-lava)
                     org.bukkit.block.Block bodyBlock = p.getLocation().getBlock();
                     data.setInLava(bodyBlock.getType() == org.bukkit.Material.LAVA);
@@ -188,9 +193,16 @@ public class GaiaPlugin extends JavaPlugin {
                     // Riptide: trident launches player at high speed through rain/water
                     data.setRiptiding(p.isRiptiding());
                     // Refresh permissions periodically (player may gain/lose perms via LP, etc.)
+                    boolean wasExempt = data.isExempt();
                     boolean explicitDeny = p.isPermissionSet("gaia.bypass") && !p.hasPermission("gaia.bypass");
                     data.setBypassed(!explicitDeny && (p.isOp() || p.hasPermission("gaia.bypass")));
                     data.setAlertsPermission(p.hasPermission("gaia.alerts"));
+                    // If player just became non-exempt (e.g. bypass config toggled off), reset position
+                    // tracking so VClip/movement checks don't flag the stale position delta on first packet.
+                    // (While exempt, onPacketReceive returns early and handleMovement is never called.)
+                    if (wasExempt && !data.isExempt()) {
+                        data.setLastTeleportTime(System.currentTimeMillis());
+                    }
                 } catch (Exception ignored) {}
             }
         }, 4L, 4L);
