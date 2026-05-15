@@ -1,5 +1,7 @@
 # Welcome to Gaia
 
+`Gaia` stands for: `G`aia `A`nalyses `I`rregular `A`ctivity
+
 Gaia is a packet-level anticheat plugin designed for Bukkit, Spigot, and Paper servers. Think of it as your server's watchdog, keeping an eye on client packets to ensure fair play. This repository holds the source code for Gaia, built as a Java Maven project targeting Java 17. Once compiled, it becomes a plugin JAR (named `Gaia-1.0.0.jar` in this version).
 
 ## What Gaia Does
